@@ -1,6 +1,7 @@
 # bibupdate
 
 [![Version](https://img.shields.io/badge/version-2.0.0-success)](https://github.com/AndrewMathas/BibUpdate)
+[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)
 [![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
 [![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
