@@ -237,8 +237,8 @@ class OutputTests(unittest.TestCase):
                 self.assertIn("eprint = {1706.00183}", self.output.read_text())
                 self.assertIn("archiveprefix = {arXiv}", self.output.read_text())
 
-    def test_check1_is_an_alias_for_compact_check_mode(self):
-        self.assertEqual(self.run_cli("--check1"), self.run_cli("--check"))
+    def test_short_check_matches_long_check_mode(self):
+        self.assertEqual(self.run_cli("-c"), self.run_cli("--check"))
         self.assertFalse(self.output.exists())
 
     def test_check_combines_ams_and_arxiv_proposals_in_one_reference(self):

@@ -22,7 +22,7 @@ See https://github.com/AndrewAtLarge/BibUpdate for more details
 about the bibupdate program.
 
 Andrew Mathas andrew.mathas@gmail.com
-Copyright (C) 2012-2021
+Copyright (C) 2012-2026  # @bump@
 """
 
 ######################################################
@@ -54,16 +54,16 @@ import xml.etree.ElementTree as ET
 default_metadata = {
     "author": "Andrew Mathas",
     "author_email": "andrew.mathas@gmail.com",
-    "copyright": "2014-2021",  # @bump@
-    "description": "Automatically update the entries of a bibtex file",
+    "copyright": "2014-2026",  # @bump@
+    "description": "Automatically update the entries in a bibtex file",
     "keywords": "bibtex, mrlookup, MathSciNet, latex",
     "license": "GNU General Public License, Version 3, 29 June 2007",
     "name": "Andrew Mathas",
     "program": "bibupdate",
-    "release date": "30 April 2021 AEST",  # @bump@
-    "repository": "https://github.com/AndrewAtLarge/BibUpdate",
-    "url": "https://github.com/AndrewAtLarge/BibUpdate",
-    "version": "1.4.0-r0",  # @bump@
+    "release date": "2 November 2026 CET",  # @bump@
+    "repository": "https://github.com/AndrewMathas/BibUpdate",
+    "url": "https://github.com/AndrewMathas/BibUpdate",
+    "version": "2.0.0",  # @bump@
 }
 
 
@@ -1208,7 +1208,6 @@ def process_options():
     updating.add_argument(
         "-c",
         "--check",
-        "--check1",
         dest="check",
         action="store_true",
         default=False,
@@ -1513,10 +1512,17 @@ Usage:
 This is a command line tool for updating the entries in a [BibTeX] file using the
 free tools provided by the American Mathematical Society: [mrlookup], [MathSciNet]
 and [MRef]. By default [bibupdate] uses [mrlookup] to update `article`, `book`,
-`inproceedings` and `incollection` entries that have no `mrnumber` field. An
-`mrnumber` field, even an empty one, skips this lookup unless `--all` or `--check`
-is used. In addition, with the `-X` option, [bibupdate] can query the [arXiv] and add
-`eprint` and `archiveprefix` fields to any entry that it finds there.
+`inproceedings` and `incollection` entries when they do not have an
+`mrnumber` field. Entries are not updated if they already have an
+`mrnumber` field, even an empty one, unless `--all` or `--check`
+is used. With the `-X` option, [bibupdate] looks for each paper in the
+[arXiv] and adds `eprint` and `archiveprefix` fields for all the papers
+that it finds.
+
+By default, [bibupdate] writes the updated entries to a new file, with the
+filename given by adding a "updated_" prefix. USing the  update the bib file
+in place, use the `--overwrite` option. This should be used with care
+because you can potentially lose data.
 
 **Options by task**:
 
@@ -1526,29 +1532,29 @@ is used. In addition, with the `-X` option, [bibupdate] can query the [arXiv] an
     -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
     -n, --mref            use mref to update bibtex entries
     -a, --all             update or validate ALL BibTeX entries
-    -X, --arxiv           also add arXiv eprint fields to entries
-    -c, --check           check all entries and report duplicates
-    --threads N          number of concurrent AMS lookups (default: 1)
+    -X, --arxiv           add arXiv eprint fields to entries
+    -c, --check           check all entries in the bib file and report duplicates
 
 **Duplicate listing**
 
     -d, --list-duplicates list duplicate papers and keys without writing a file
-    --list-papers        list duplicate papers only
-    --list-keys          list repeated citation keys only
+    --list-papers         list duplicate papers only
+    --list-keys           list repeated citation keys only
 
 **Duplicate cleanup**
 
-    --duplicates         remove duplicate papers and rename repeated keys
-    --duplicate-papers   remove duplicate papers, keeping the first
-    --duplicate-keys     rename repeated keys using authors and year
+    --duplicates          remove duplicate papers and rename repeated keys
+    --duplicate-papers    remove duplicate papers, keeping the first
+    --duplicate-keys      rename repeated keys using authors and year
 
 **Output and formatting**
 
-    -o, --overwrite       overwrite existing bibtex file
+    -o, --overwrite       update/overwrite the bibtex file (use with care)
     -i FIELDS, --ignored-fields FIELDS
-                          a string of bibtex fields to ignore
+                          comma separated list of bibtex fields to ignore
     -k, --keep_fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
+    --threads N           number of concurrent AMS lookups (default: 1)
 
 **Reports and logging**
 
@@ -1559,7 +1565,6 @@ is used. In addition, with the `-X` option, [bibupdate] can query the [arXiv] an
 
     -h, --help            show grouped options and exit
     -H, --Help            print full program description
-    -v, --version         print the program version and exit
 
 **Note:**
 As described below, you should check the new file for errors before deleting the
@@ -1696,16 +1701,16 @@ Entries without a usable title cannot be searched.
 request before starting the next one. Updating a large database
 with `-X` can therefore take a while.
 
-#### `-c, --check, --check1`
+#### `-c, --check
 
 Check all entries and report duplicates
 
-This switch is off by default. It prints each entry that would change as a compact reference, using the proposed
-database fields and retaining any other local fields. The original [BibTeX]
-file is not changed and no output bibliography is written. `--check1` is an
-alias for `--check`. Check mode implies `--all`; it runs [arXiv] lookups only
-when `--arxiv` is also supplied. Proposed references remain visible even with
-`-qq`.
+This switch is off by default. It prints each entry that would change as a
+compact reference, using the proposed database fields and retaining any
+other local fields. The original [BibTeX] file is not changed and no output
+bibliography is written.Check mode implies `--all`; it runs [arXiv] lookups
+only when `--arxiv` is also supplied. Proposed references remain visible even
+with `-qq`.
 
 Before network lookups, checks the input file for repeated citation keys and
 papers listed under different keys. Shared DOI, MR number or arXiv identifiers
@@ -1834,7 +1839,7 @@ do NOT replace fonts `\Bbb`, `\germ` and `\scr` in titles
 
 This switch is off by default, so supported font commands in titles are replaced.
 The [BibTeX] entries generated by [mrlookup] use `\Bbb`, `\germ` and `\scr` for the
-`\mathbb`, `\mathfrak` and `\mathscr` fonts. By default, in the *title* fields,
+`\mathbb`, `\mathfrak` and `\mathscr` fonts. By default, in *title* fields,
 these fonts specifications are automatically changed to the following more
 [LaTeX] friendly fonts:
 

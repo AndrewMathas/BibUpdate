@@ -147,7 +147,7 @@
 
 % BEGIN GENERATED BIBUPDATE HELP
 % Generated from bibupdate.__doc__; edit the help, then run python3 setup.py readme.
-Automatically update the entries of a bibtex file
+Automatically update the entries in a bibtex file
 
 Usage:
 
@@ -169,13 +169,20 @@ By default \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
 uses
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
 to update \texttt{article}, \texttt{book}, \texttt{inproceedings} and
-\texttt{incollection} entries that have no \texttt{mrnumber} field. An
-\texttt{mrnumber} field, even an empty one, skips this lookup unless
-\texttt{-\/-all} or \texttt{-\/-check} is used. In addition, with the
-\texttt{-X} option,
-\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} can query
-the \href{http://arxiv.org/}{arXiv} and add \texttt{eprint} and
-\texttt{archiveprefix} fields to any entry that it finds there.
+\texttt{incollection} entries when they do not have an \texttt{mrnumber}
+field. Entries are not updated if they already have an \texttt{mrnumber}
+field, even an empty one, unless \texttt{-\/-all} or \texttt{-\/-check}
+is used. With the \texttt{-X} option,
+\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} looks for
+each paper in the \href{http://arxiv.org/}{arXiv} and adds
+\texttt{eprint} and \texttt{archiveprefix} fields for all the papers
+that it finds.
+
+By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
+writes the updated entries to a new file, with the filename given by
+adding a "updated\_" prefix. USing the update the bib file in place, use
+the \texttt{-\/-overwrite} option. This should be used with care because
+you can potentially lose data.
 
 \textbf{Options by task}:
 
@@ -186,35 +193,35 @@ the \href{http://arxiv.org/}{arXiv} and add \texttt{eprint} and
 -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
 -n, --mref            use mref to update bibtex entries
 -a, --all             update or validate ALL BibTeX entries
--X, --arxiv           also add arXiv eprint fields to entries
--c, --check           check all entries and report duplicates
---threads N          number of concurrent AMS lookups (default: 1)
+-X, --arxiv           add arXiv eprint fields to entries
+-c, --check           check all entries in the bib file and report duplicates
 \end{Verbatim}
 
 \textbf{Duplicate listing}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 -d, --list-duplicates list duplicate papers and keys without writing a file
---list-papers        list duplicate papers only
---list-keys          list repeated citation keys only
+--list-papers         list duplicate papers only
+--list-keys           list repeated citation keys only
 \end{Verbatim}
 
 \textbf{Duplicate cleanup}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
---duplicates         remove duplicate papers and rename repeated keys
---duplicate-papers   remove duplicate papers, keeping the first
---duplicate-keys     rename repeated keys using authors and year
+--duplicates          remove duplicate papers and rename repeated keys
+--duplicate-papers    remove duplicate papers, keeping the first
+--duplicate-keys      rename repeated keys using authors and year
 \end{Verbatim}
 
 \textbf{Output and formatting}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
--o, --overwrite       overwrite existing bibtex file
+-o, --overwrite       update/overwrite the bibtex file (use with care)
 -i FIELDS, --ignored-fields FIELDS
-                      a string of bibtex fields to ignore
+                      comma separated list of bibtex fields to ignore
 -k, --keep_fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
 -w LEN, --wrap LEN    wrap bibtex fields to specified width
+--threads N           number of concurrent AMS lookups (default: 1)
 \end{Verbatim}
 
 \textbf{Reports and logging}
@@ -229,7 +236,6 @@ the \href{http://arxiv.org/}{arXiv} and add \texttt{eprint} and
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 -h, --help            show grouped options and exit
 -H, --Help            print full program description
--v, --version         print the program version and exit
 \end{Verbatim}
 
 \textbf{Note:} As described below, you should check the new file for
@@ -454,7 +460,7 @@ request before starting the next one. Updating a large database with
 
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-c,\ -\/-check,\ -\/-check1}}{-c, -\/-check, -\/-check1}}\label{-c---check---check1}
+\BibUpdateOptionHeading*{`-c, -\/-check}\label{-c---check}
 
 \begin{BibUpdateOptionDescription}
 
@@ -464,8 +470,7 @@ This switch is off by default. It prints each entry that would change as
 a compact reference, using the proposed database fields and retaining
 any other local fields. The original
 \href{http://www.bibtex.org/}{BibTeX} file is not changed and no output
-bibliography is written. \texttt{-\/-check1} is an alias for
-\texttt{-\/-check}. Check mode implies \texttt{-\/-all}; it runs
+bibliography is written.Check mode implies \texttt{-\/-all}; it runs
 \href{http://arxiv.org/}{arXiv} lookups only when \texttt{-\/-arxiv} is
 also supplied. Proposed references remain visible even with
 \texttt{-qq}.
@@ -672,8 +677,8 @@ replaced. The \href{http://www.bibtex.org/}{BibTeX} entries generated by
 use \texttt{\textbackslash{}Bbb}, \texttt{\textbackslash{}germ} and
 \texttt{\textbackslash{}scr} for the \texttt{\textbackslash{}mathbb},
 \texttt{\textbackslash{}mathfrak} and \texttt{\textbackslash{}mathscr}
-fonts. By default, in the \emph{title} fields, these fonts
-specifications are automatically changed to the following more
+fonts. By default, in \emph{title} fields, these fonts specifications
+are automatically changed to the following more
 \href{http://en.wikipedia.org/wiki/LaTeX}{LaTeX} friendly fonts:
 
 \begin{itemize}
@@ -859,12 +864,9 @@ Print the program version and licence, and exit.
 % BEGIN GENERATED BIBUPDATE LICENCE
 \subsection*{Licence}\label{licence}
 
-Andrew Mathas
-
+Andrew Mathas GNU General Public License, Version 3, 29 June 2007
 \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} Version
-1.4.0-r0. Copyright (C) 2014-2026
-
-GNU General Public License, Version 3, 29 June 2007
+2.0.0. Copyright (C) 2014-2026
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License

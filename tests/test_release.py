@@ -179,7 +179,7 @@ class ReleaseTests(unittest.TestCase):
     def test_old_pdf_and_unresolved_references_are_reported(self):
         os.utime(self.directory / "bibupdate.pdf", (1, 1))
         (self.directory / "bibupdate.log").write_text("LaTeX Warning: There were undefined references.\n")
-        self.assert_failed("Manual PDF")
+        self.assert_failed("Manual")
         self.assert_failed("LaTeX log")
 
     def test_wrong_pdf_version_is_reported(self):
@@ -189,7 +189,7 @@ class ReleaseTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, "Title: bibupdate - 0.0.0\nPages: 1\n", "")
             return original(command, **kwargs)
         with patch.object(build.subprocess, "run", side_effect=wrong_version):
-            self.assert_failed("Manual PDF")
+            self.assert_failed("Manual")
 
     def test_failed_tests_block_packaging_but_can_be_explicitly_skipped(self):
         (self.directory / "tests/test_smoke.py").write_text(

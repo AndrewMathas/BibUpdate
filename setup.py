@@ -37,6 +37,7 @@ GENERATED_REGIONS = [
 CTAN_FILES = (
     "bibupdate.py",
     "README.md",
+    "CHANGES.md",
     "bibupdate.tex",
     "bibupdate.pdf",
     "bibupdate.ini",
@@ -49,10 +50,10 @@ version={version}
 name={author}
 email={author_email}
 summary={description}
-directory=/support/bibupdate
+directory=/biblio/bibtex/utils/bibupdate
 DoNotAnnounce=0
 announce={description}
-notes=Requires python
+notes=Requires Python 3. Please install bibupdate.py as the command bibupdate (bibupdate.exe on Windows), keeping bibupdate.ini alongside the Python script.
 license=free
 freeversion=gpl
 file=bibupdate.tar.gz
@@ -138,8 +139,9 @@ Redirected output contains no colour escape sequences.
 
 Use `./make_release -m` (or `--manual`) to rebuild the README and manual only,
 `./make_release -t` (or `--tests`) to run the tests only, or `./make_release -mt`
-to do both. These maintenance actions do not run readiness checks or create an
-archive, so they also work while preparing an uncommitted release. They cannot
+to do both. Manual builds always recompile `bibupdate.tex`, even if latexmk
+considers the PDF current. These actions do not run readiness checks or create
+an archive, so they also work while preparing an uncommitted release. They cannot
 be combined with the release-only flags below. The same options are available
 with `python3 setup.py release`.
 
@@ -280,6 +282,7 @@ def build_documentation(directory=ROOT, make_pdf=True):
             [
                 latexmk,
                 "-pdf",
+                "-g",
                 "-interaction=nonstopmode",
                 "-halt-on-error",
                 "-no-shell-escape",
@@ -590,7 +593,7 @@ def check_release(directory=ROOT, skip_tests=False):
         ]
         require(
             not outdated,
-            "PDF is older than "
+            "bibupdate.pdf is older than "
             + ", ".join(outdated)
             + "; run python3 setup.py readme",
         )
@@ -619,7 +622,7 @@ def check_release(directory=ROOT, skip_tests=False):
             "PDF changed during validation; wait for its writer to finish",
         )
 
-    check("Manual PDF", check_pdf)
+    check("Manual", check_pdf)
 
     def check_log():
         log = (directory / "bibupdate.log").read_text(

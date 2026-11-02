@@ -4,6 +4,7 @@
 - Adds `--threads` for ordered concurrent AMS lookups; arXiv lookups remain sequential
 - Adds `-X`/`--arxiv` lookups and `-n`/`--mref` support
 - Adds `make_release -m` and `-t` to rebuild documentation and run tests separately
+- Forces manual recompilation on every `make_release -m` run
 - Adds missing fields even when existing fields are unchanged
 - Adds network timeouts and continues processing after failed lookups
 - Adds offline duplicate paper removal and collision-free key renaming
@@ -27,7 +28,7 @@
 - Prints compact references with separate citation keys and 78-column wrapping
 - Retains empty braced fields when deciding which lookups to skip
 - Shows missed lookups in `--quiet` mode without separator bars
-- Shows proposed AMS and arXiv changes in compact `--check`/`--check1` output
+- Shows proposed AMS and arXiv changes in compact `--check` output
 - Supports running without `bibupdate.ini` using embedded metadata
 - Updates AMS lookups to use the current JSON APIs
 - Updates documented defaults and known issues

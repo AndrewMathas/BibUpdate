@@ -44,6 +44,7 @@ class CtanTests(unittest.TestCase):
             self.assertCountEqual(package.getnames(), [
                 "bibupdate/bibupdate.py", "bibupdate/README.md", "bibupdate/bibupdate.tex",
                 "bibupdate/bibupdate.pdf", "bibupdate/bibupdate.ini", "bibupdate/LICENSE.txt",
+                "bibupdate/CHANGES.md",
             ])
             for member in package.getmembers():
                 self.assertTrue(member.isfile())
