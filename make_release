@@ -1,0 +1,3 @@
+#!/bin/sh
+# Check and package a release, or use -m/-t/-mt for manual/tests maintenance.
+exec python3 "$(dirname "$0")/setup.py" release "$@"

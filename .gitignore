@@ -14,3 +14,19 @@ sdist
 develop-eggs
 .installed.cfg
 _build
+.venv-docs/
+bibupdate.tar.gz
+bibupdate.ctan
+
+# LaTeX build files (keep the manual source and PDF).
+*.aux
+*.fdb_latexmk
+*.fls
+*.idx
+*.ilg
+*.ind
+*.log
+*.out
+*.synctex.gz
+*.synctex(busy)
+*.toc

@@ -1,5 +1,7 @@
 include *.py
-include *.rst
-include README.pdf
+include *.ini
+include *.md
+include bibupdate.tex
+include bibupdate.pdf
 include LICENSE.txt
 
