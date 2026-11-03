@@ -107,17 +107,17 @@ The files in `tests/` contain automated checks to catch bugs after changes:
   metadata generation.
 - [test_settings.py](tests/test_settings.py): metadata discovery through symlinks
   and standalone operation without an ini file.
-- [test_release.py](tests/test_release.py): release readiness checks and failure
+- [test_release.py](tests/test_release.py): prerelease checks and failure
   handling before packaging.
 
-Run all tests from the project directory:
+Run all tests from the project directory using `./make_release -t` or:
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-The tests use simulated lookup responses, so no network access is needed.
-Documentation checks require Pandoc and latexmk to be available.
+The tests use simulated lookup responses, so network access is not needed.
+Documentation checks require Pandoc and latexmk.
 
 ## Rebuilding the documentation
 
@@ -125,11 +125,10 @@ The built-in help in `bibupdate.py` is the source for `README.md` and the
 marked, generated regions of the manual. The title page, styling and text
 outside those regions can be edited directly.
 
-Run `python3 setup.py readme` in the source directory to refresh both sources
-and compile `bibupdate.pdf`. This requires Python, Pandoc, and `latexmk` from
-a TeX distribution. Use `--no-pdf` to refresh only the sources; `docs` is an
-alias for `readme`. BibUpdate itself remains a self-contained Python script
-with no non-standard dependencies.
+Run `./make_release -m`, or python3 setup.py readme`,  to refresh both
+`README.md` and to compile `bibupdate.pdf`. This requires python, pandoc,
+and `latexmk`. Use `--no-pdf` to refresh only the sources; `docs` is an
+alias for `readme`.
 
 ## Preparing a release
 
@@ -138,69 +137,72 @@ From a source checkout, update `bibupdate.ini`, the script's embedded
 `CHANGES.md`. The changelog heading must name the release version:
 
 ```bash
-**v2.0** -- CTAN release
-```
-
-and headings such as
-
-```bash
 ## Version 2.0.0 - 2026-11-02
 ```
 
-are both accepted. A zero patch component may be omitted in the changelog. Any
-date in the heading must match the ini file. Release versions in the ini file
-must be `X.Y.Z`, without a prerelease suffix, and the copyright end year must
-match the release year. Rebuild the documentation and commit the
-prepared files using:
+are both accepted. A zero patch component may be omitted in the changelog.
+Dates in the heading must match the ini file. Use `make_release` to build
+the gzipped tar file for uploading to ctan, and to run some rudimentary
+tests to check that everything is ready. Release versions in the ini file
+must use the semantic version convention `X.Y.Z`, without a prerelease
+suffix, and the copyright end year must match the release year. The
+`make_release` script can also be used to rebuild the documentation and
+run the test suit. The full-usage of this command is:
 
 ```bash
-make_release
-usage: setup.py [-h] [-c] [-f] [-s] [-m] [-t]
+# usage:
 
-Check release readiness and build the CTAN archive, or run only the requested maintenance actions (-m/-t).
+make_release [-h] [-c] [-f] [-s] [-m] [-t]
+
+Check release readiness and build the CTAN tar file, or run the
+requested maintenance functions (-m/-t).
 
 options:
   -h, --help        show this help message and exit
   -c, --check-only  check release readiness without packaging
   -f, --force       force building bibupdate.tar.gz
   -s, --skip-tests  skip the test suite
-  -m, --manual      rebuild README.md and the manual (combine with -t)
-  -t, --tests       run the test suite (combine with -m)
+  -m, --manual      rebuild README.md and the manual
+  -t, --tests       run the test suite
 ```
 
-Functionally, `make_release` is equivalent to running commands like:
+The `make_release` script is just a wrapper to using `setup.py`, so it
+is functonally equivalent to running commands like:
 
 ```bash
 python3 setup.py readme
-# Review and commit the release changes, then:
 python3 setup.py release
 ```
 
-`./make_release` runs the same release command. It checks metadata consistency,
-the changelog, a clean Git working tree (including untracked files), generated
-documentation, PDF freshness and metadata, the [LaTeX] log, and all tests before
-creating `bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
-rebuilding the manual also needs latexmk and TeX. The release check does not
-change metadata or rebuild files automatically.
-Terminal reports use green ticks for passing checks and test summaries, red
-crosses and text for failures, and yellow notices for skipped tests or overrides.
-Redirected output contains no colour escape sequences.
+Use `pythn3 setup.py -h` to see the available commands.
 
-Use `./make_release -m` (or `--manual`) to rebuild the README and manual only,
-`./make_release -t` (or `--tests`) to run the tests only, or `./make_release -mt`
-to do both. Manual builds always recompile `bibupdate.tex`, even if latexmk
-considers the PDF current. These actions do not run readiness checks or create
+The `./make_release` script checks metadata consistency, the changelog,
+uncommited changes in the Git repository (including untracked files),
+that the documentation is up to date and compiles, and that all unit 
+tests pass, in which case it creates `bibupdate.tar.gz` for uploading to
+CTAN. The script does not change metadata or rebuild files automatically.
+Any existing `bibupdate.tar.gz` is removed before it runs any tests,
+included when used with `--check-only`. Terminal reports use green
+ticks for passing tests, red crosses for failures, and yellow warning
+notices for skipped tests or overrides. Redirected output does not contain
+colour escape sequences.
+
+Use `./make_release -m` (or `--manual`) to rebuild the README file and
+LaTeX manual, `./make_release -t` to run the test suit. Manual builds always
+recompile `bibupdate.tex`. These actions do not run readiness checks or create
 an archive, so they also work while preparing an uncommitted release. They cannot
 be combined with the release-only flags below. The same options are available
 with `python3 setup.py release`.
 
-Use `-c` or `--check-only` to inspect readiness without creating an archive, `-s` or
-`--skip-tests` to omit the test suite, and `-f` or `--force` to building
-the tar file. Missing or changed package files still prevent the tar
-file from being created. The option `--check-only` returns a nonzero exit
-status when any check fails, including with `--force`.
+Use `-c` or `--check-only` to see if the package is potetially ready for
+release without building the tar file, `-s` or `--skip-tests` to omit the test
+suite, and `-f` or `--force` to building the tar file. Missing or changed
+package files prevent the tar file from being created. The option `--check-only`
+returns a nonzero exit status whenever a check fails, including when used
+with `--force`.
 
-`python3 setup.py ctan` packages the existing release files without readiness
+Running `python3 setup.py ctan` packages the existing release files without
+running the prerelease checks readiness
 checks. Both commands prepare files locally; upload separately using
 `ctanupload -F bibupdate.ctan` from the source directory.
 
@@ -447,10 +449,10 @@ def run_tests(directory=ROOT):
 
 
 def check_release(directory=ROOT, skip_tests=False):
-    """Report all readiness failures without modifying the release files."""
+    """Report all prerelease failures without modifying the release files."""
     directory = Path(directory)
     failures = []
-    release_report("heading", "Checking bibupdate release readiness")
+    release_report("heading", "Running prelease checks")
 
     def check(label, operation):
         try:
@@ -719,6 +721,8 @@ def check_release(directory=ROOT, skip_tests=False):
 
 
 def release(directory=ROOT, check_only=False, force=False, skip_tests=False):
+    # A failed check must not leave an archive from an earlier release attempt.
+    (Path(directory) / "bibupdate.tar.gz").unlink(missing_ok=True)
     failures = check_release(directory, skip_tests=skip_tests)
     if failures:
         release_report("failure", "%d release check(s) failed." % len(failures))
@@ -764,14 +768,14 @@ def main():
             raise SystemExit(1)
     elif len(sys.argv) > 1 and sys.argv[1] == "release":
         parser = argparse.ArgumentParser(
-            description="Check release readiness and build the CTAN archive, or run "
+            description="Run prerelease checksand build the CTAN archive, or run "
             "only the requested maintenance actions (-m/-t)."
         )
         parser.add_argument(
             "-c",
             "--check-only",
             action="store_true",
-            help="check release readiness without packaging",
+            help="run prereleaschecks without creating tar file",
         )
         parser.add_argument(
             "-f",
@@ -786,20 +790,20 @@ def main():
             "-m",
             "--manual",
             action="store_true",
-            help="rebuild README.md and the manual (combine with -t)",
+            help="rebuild README.md and the manual",
         )
         parser.add_argument(
             "-t",
             "--tests",
             action="store_true",
-            help="run the test suite (combine with -m)",
+            help="run the test suite",
         )
         args = parser.parse_args(sys.argv[2:])
         if (args.manual or args.tests) and (
             args.check_only or args.force or args.skip_tests
         ):
             parser.error(
-                "-m/-t cannot be combined with --check-only, --force or --skip-tests"
+                "-m/-t cannot be used with --check-only, --force or --skip-tests"
             )
         try:
             if args.manual or args.tests:
@@ -838,6 +842,7 @@ def main():
     else:
         # Setuptools is needed only for the legacy package-building commands.
         from setuptools import setup
+        from setuptools.command.bdist_wheel import bdist_wheel
 
         setup(
             name="bibupdate",
@@ -845,18 +850,20 @@ def main():
             author_email=bibupdate.bibup["author_email"],
             description=bibupdate.bibup["description"],
             keywords=bibupdate.bibup["keywords"],
-            license=bibupdate.bibup["license"],
+            license_expression="GPL-3.0-or-later",
+            license_files=["LICENSE.txt"],
             url=bibupdate.bibup["url"],
             version=bibupdate.bibup["version"],
             long_description=readme_markdown(),
             long_description_content_type="text/markdown",
             py_modules=["bibupdate"],
+            # Prefer the integrated command over the deprecated wheel entry point.
+            cmdclass={"bdist_wheel": bdist_wheel},
             python_requires=">=3.9",
             classifiers=[
                 "Development Status :: 5 - Production/Stable",
                 "Environment :: Console",
                 "Intended Audience :: Science/Research",
-                "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
                 "Natural Language :: English",
                 "Programming Language :: Python :: 3.9",
                 "Topic :: Text Processing",

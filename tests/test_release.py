@@ -108,6 +108,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(any(message.startswith(label + ":") for message in failures), failures)
 
     def test_ready_release_runs_tests_and_packages_the_checked_files(self):
+        (self.directory / "bibupdate.tar.gz").write_bytes(b"old archive")
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertTrue(build.release(self.directory))
         with tarfile.open(self.directory / "bibupdate.tar.gz") as package:
@@ -122,6 +123,22 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(before, {name: (self.directory / name).read_bytes() for name in build.CTAN_FILES})
         self.assertFalse((self.directory / "bibupdate.tar.gz").exists())
         self.assertFalse((self.directory / "bibupdate.ctan").exists())
+
+    def test_old_archive_is_removed_before_checks_even_when_they_fail(self):
+        archive = self.directory / "bibupdate.tar.gz"
+        def failed_checks(directory, skip_tests=False):
+            self.assertEqual(directory, self.directory)
+            self.assertFalse(archive.exists())
+            return ["Readiness failure"]
+        for check_only in [False, True]:
+            with self.subTest(check_only=check_only):
+                archive.write_bytes(b"old archive")
+                with patch.object(build, "check_release", side_effect=failed_checks), \
+                     patch.object(build, "build_ctan_package") as package, \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertFalse(build.release(self.directory, check_only=check_only))
+                package.assert_not_called()
+                self.assertFalse(archive.exists())
 
     def test_prerelease_and_metadata_mismatch_block_packaging(self):
         self.metadata["version"] = "1.2.3-rc1"

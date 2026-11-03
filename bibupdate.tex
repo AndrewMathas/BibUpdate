@@ -74,11 +74,11 @@
 \makeatletter
 % README-style headings: left aligned, unnumbered, and on their own line.
 \renewcommand\subsection{\@startsection{subsection}{2}{0pt}
-  {-12pt plus -3pt minus -2pt}{6pt}
-  {\normalfont\large\bfseries\color{NavyBlue}}}
+  {-16pt plus -4pt minus -2pt}{8pt}
+  {\normalfont\Large\sffamily\bfseries\color{NavyBlue}}}
 \renewcommand\subsubsection{\@startsection{subsubsection}{3}{0pt}
   {-8pt plus -2pt minus -1pt}{3pt}
-  {\normalfont\bfseries\color{NavyBlue}}}
+  {\normalfont\normalsize\bfseries\color{NavyBlue}}}
 \author{Andrew Mathas}
 \usepackage{tikz}
 \usetikzlibrary{shadows.blur}
@@ -148,9 +148,10 @@
 
 % BEGIN GENERATED BIBUPDATE HELP
 % Generated from bibupdate.__doc__; edit the help, then run python3 setup.py readme.
-Automatically update bibtex files
+Update bibtex files: syncing with the AMS and the arXiv, managing
+merging and duplicates
 
-Usage:
+\subsection*{Usage:}\label{usage}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
@@ -194,10 +195,9 @@ entries to a new file, with the filename given by adding an
 files are backed up with \texttt{.bak} extensions, but
 \texttt{-\/-overwrite} should still be used with care.
 
-\textbf{Options by task}:
+\subsection*{Options by task:}\label{options-by-task}
 
-\Needspace{4\baselineskip}
-\textbf{Updating and checking}
+\subsubsection*{Updating and checking}\label{updating-and-checking}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 -m, --mrlookup        use mrlookup to update bibtex entries (default)
@@ -208,8 +208,7 @@ files are backed up with \texttt{.bak} extensions, but
 -c, --check           check all entries and report duplicates without writing a file
 \end{Verbatim}
 
-\Needspace{4\baselineskip}
-\textbf{Duplicate listing}
+\subsubsection*{Duplicate listing}\label{duplicate-listing}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 --list-duplicates     list duplicate papers and keys without writing a file
@@ -217,8 +216,7 @@ files are backed up with \texttt{.bak} extensions, but
 --list-keys           list repeated citation keys only
 \end{Verbatim}
 
-\Needspace{4\baselineskip}
-\textbf{Duplicate cleanup}
+\subsubsection*{Duplicate cleanup}\label{duplicate-cleanup}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 --deduplicate         remove duplicate papers and rename repeated keys
@@ -231,8 +229,7 @@ files are backed up with \texttt{.bak} extensions, but
                       update citations in listed TeX files during cleanup
 \end{Verbatim}
 
-\Needspace{4\baselineskip}
-\textbf{Output and formatting}
+\subsubsection*{Output and formatting}\label{output-and-formatting}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 --output FILE.bib     write the bibliography to this file
@@ -244,8 +241,7 @@ files are backed up with \texttt{.bak} extensions, but
 --threads N           number of concurrent AMS lookups (default: 1)
 \end{Verbatim}
 
-\Needspace{4\baselineskip}
-\textbf{Help and logging}
+\subsubsection*{Help and logging}\label{help-and-logging}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 -h, --help            show grouped options and exit
@@ -255,8 +251,8 @@ files are backed up with \texttt{.bak} extensions, but
 -qq                   only print errors
 \end{Verbatim}
 
-\textbf{Note:} As described below, you should check the updated
-\texttt{.bib} file for errors before deleting the original
+As described below, you should check the updated \texttt{.bib} file for
+errors before deleting the original
 \href{http://www.bibtex.org/}{BibTeX} file.
 
 \href{http://www.bibtex.org/}{BibTeX} is widely used by the
@@ -357,7 +353,7 @@ for each entry in the file that is updated, writing the updated
 \href{http://www.bibtex.org/}{BibTeX} file to \texttt{updated\_file.bib}
 if the original input file was \texttt{file.bib}.
 
-\subsubsection*{Updating and checking}\label{updating-and-checking}
+\subsubsection*{Updating and checking}\label{updating-and-checking-1}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-m,\ -\/-mrlookup}}{-m, -\/-mrlookup}}\label{-m---mrlookup}
 
@@ -472,7 +468,7 @@ delay between requests, regardless of the thread count.
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Duplicate listing}\label{duplicate-listing}
+\subsubsection*{Duplicate listing}\label{duplicate-listing-1}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-list-duplicates}}{-\/-list-duplicates}}\label{--list-duplicates}
 
@@ -507,7 +503,7 @@ List repeated citation keys only
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Duplicate cleanup}\label{duplicate-cleanup}
+\subsubsection*{Duplicate cleanup}\label{duplicate-cleanup-1}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-deduplicate}}{-\/-deduplicate}}\label{--deduplicate}
 
@@ -645,7 +641,7 @@ are replaced.
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Output and formatting}\label{output-and-formatting}
+\subsubsection*{Output and formatting}\label{output-and-formatting-1}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-output\ FILE.bib}}{-\/-output FILE.bib}}\label{--output-filebib}
 
@@ -740,7 +736,7 @@ with a tab before continuation lines.
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Help and logging}\label{help-and-logging}
+\subsubsection*{Help and logging}\label{help-and-logging-1}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-h,\ -\/-help}}{-h, -\/-help}}\label{-h---help}
 

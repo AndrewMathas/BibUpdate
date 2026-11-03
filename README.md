@@ -6,9 +6,9 @@
 
 # bibupdate
 
-Automatically update bibtex files
+Update bibtex files: syncing with the AMS and the arXiv, managing merging and duplicates
 
-Usage:
+## Usage:
 
     bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
               [-m | -M | -n] [-o] [-q] [--threads N] [-w LEN]
@@ -37,9 +37,9 @@ To update the bib file in place, use `--overwrite`, or give an output
 filename. Existing output files are backed up with `.bak` extensions,
 but `--overwrite` should still be used with care.
 
-**Options by task**:
+## Options by task:
 
-**Updating and checking**
+### Updating and checking
 
     -m, --mrlookup        use mrlookup to update bibtex entries (default)
     -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
@@ -48,13 +48,13 @@ but `--overwrite` should still be used with care.
     -x, --arxiv           add arXiv eprint fields to entries
     -c, --check           check all entries and report duplicates without writing a file
 
-**Duplicate listing**
+### Duplicate listing
 
     --list-duplicates     list duplicate papers and keys without writing a file
     --list-papers         list duplicate papers only
     --list-keys           list repeated citation keys only
 
-**Duplicate cleanup**
+### Duplicate cleanup
 
     --deduplicate         remove duplicate papers and rename repeated keys
     --remove-duplicate-papers
@@ -65,7 +65,7 @@ but `--overwrite` should still be used with care.
     -t, --texfile FILE.tex [FILE.tex ...]
                           update citations in listed TeX files during cleanup
 
-**Output and formatting**
+### Output and formatting
 
     --output FILE.bib     write the bibliography to this file
     -o, --overwrite       update/overwrite the bibtex file (use with care)
@@ -75,7 +75,7 @@ but `--overwrite` should still be used with care.
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
     --threads N           number of concurrent AMS lookups (default: 1)
 
-**Help and logging**
+### Help and logging
 
     -h, --help            show grouped options and exit
     -H, --Help            print full program description
@@ -83,7 +83,6 @@ but `--overwrite` should still be used with care.
     -q, --quiet           brief updates and missed lookups
     -qq                   only print errors
 
-**Note:**
 As described below, you should check the updated `.bib` file for errors
 before deleting the original [BibTeX] file.
 
@@ -471,14 +470,14 @@ The files in `tests/` contain automated checks to catch bugs after changes:
 - [test_release.py](tests/test_release.py): release readiness checks and failure
   handling before packaging.
 
-Run all tests from the project directory:
+Run all tests from the project directory using `./make_release -t` or:
 
 ```bash
 python3 -m unittest discover -s tests -v
 ```
 
-The tests use simulated lookup responses, so no network access is needed.
-Documentation checks require Pandoc and latexmk to be available.
+The tests use simulated lookup responses, so network access is not needed.
+Documentation checks require Pandoc and latexmk.
 
 ## Rebuilding the documentation
 
@@ -486,11 +485,10 @@ The built-in help in `bibupdate.py` is the source for `README.md` and the
 marked, generated regions of the manual. The title page, styling and text
 outside those regions can be edited directly.
 
-Run `python3 setup.py readme` in the source directory to refresh both sources
-and compile `bibupdate.pdf`. This requires Python, Pandoc, and `latexmk` from
-a TeX distribution. Use `--no-pdf` to refresh only the sources; `docs` is an
-alias for `readme`. BibUpdate itself remains a self-contained Python script
-with no non-standard dependencies.
+Run `./make_release -m`, or python3 setup.py readme`,  to refresh both
+`README.md` and to compile `bibupdate.pdf`. This requires python, pandoc,
+and `latexmk`. Use `--no-pdf` to refresh only the sources; `docs` is an
+alias for `readme`.
 
 ## Preparing a release
 
@@ -499,53 +497,56 @@ From a source checkout, update `bibupdate.ini`, the script's embedded
 `CHANGES.md`. The changelog heading must name the release version:
 
 ```bash
-**v2.0** -- CTAN release
-```
-
-and headings such as
-
-```bash
 ## Version 2.0.0 - 2026-11-02
 ```
 
-are both accepted. A zero patch component may be omitted in the changelog. Any
-date in the heading must match the ini file. Release versions in the ini file
-must be `X.Y.Z`, without a prerelease suffix, and the copyright end year must
-match the release year. Rebuild the documentation and commit the
-prepared files using:
+are both accepted. A zero patch component may be omitted in the changelog.
+Dates in the heading must match the ini file. Use `make_release` to build
+the gzipped tar file for uploading to ctan, and to run some rudimentary
+tests to check that everything is ready. Release versions in the ini file
+must use the semantic version convention `X.Y.Z`, without a prerelease
+suffix, and the copyright end year must match the release year. The
+`make_release` script can also be used to rebuild the documentation and
+run the test suit. The full-usage of this command is:
 
 ```bash
-make_release
-usage: setup.py [-h] [-c] [-f] [-s] [-m] [-t]
+# usage:
 
-Check release readiness and build the CTAN archive, or run only the requested maintenance actions (-m/-t).
+make_release [-h] [-c] [-f] [-s] [-m] [-t]
+
+Check release readiness and build the CTAN tar file, or run the
+requested maintenance functions (-m/-t).
 
 options:
   -h, --help        show this help message and exit
   -c, --check-only  check release readiness without packaging
   -f, --force       force building bibupdate.tar.gz
   -s, --skip-tests  skip the test suite
-  -m, --manual      rebuild README.md and the manual (combine with -t)
-  -t, --tests       run the test suite (combine with -m)
+  -m, --manual      rebuild README.md and the manual
+  -t, --tests       run the test suite
 ```
 
-Functionally, `make_release` is equivalent to running commands like:
+The `make_release` script is just a wrapped to using `setup.py`, so it
+is functonally equivalent to running commands like:
 
 ```bash
 python3 setup.py readme
-# Review and commit the release changes, then:
 python3 setup.py release
 ```
 
-`./make_release` runs the same release command. It checks metadata consistency,
-the changelog, a clean Git working tree (including untracked files), generated
-documentation, PDF freshness and metadata, the [LaTeX] log, and all tests before
-creating `bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
+Use `pythn3 setup.py -h` to see the available commands.
+
+The `./make_release` script checks metadata consistency, the changelog, a clean
+Git working tree (including untracked files), generated documentation, PDF
+freshness and metadata, the [LaTeX] log, and all tests before creating 
+`bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
 rebuilding the manual also needs latexmk and TeX. The release check does not
-change metadata or rebuild files automatically.
-Terminal reports use green ticks for passing checks and test summaries, red
-crosses and text for failures, and yellow notices for skipped tests or overrides.
-Redirected output contains no colour escape sequences.
+change metadata or rebuild files automatically. Any existing `bibupdate.tar.gz`
+is removed before readiness checks begin, including with `--check-only`.
+Terminal reports use green
+ticks for passing checks and test summaries, red crosses and text for failures,
+and yellow notices for skipped tests or overrides. Redirected output contains
+no colour escape sequences.
 
 Use `./make_release -m` (or `--manual`) to rebuild the README and manual only,
 `./make_release -t` (or `--tests`) to run the tests only, or `./make_release -mt`

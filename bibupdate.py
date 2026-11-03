@@ -56,7 +56,7 @@ default_metadata = {
     "author": "Andrew Mathas",
     "author_email": "andrew.mathas@gmail.com",
     "copyright": "2012-2026",  # @bump@
-    "description": "Automatically update bibtex files",
+    "description": "Update bibtex files: syncing with the AMS and the arXiv, managing merging and duplicates",
     "keywords": "bibtex, mrlookup, MathSciNet, latex",
     "license": "GNU General Public License, Version 3, 29 June 2007",
     "name": "Andrew Mathas",
@@ -1995,7 +1995,7 @@ __doc__ = r"""# bibupdate
 
 {0.description}
 
-Usage:
+## Usage:
 
     bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
               [-m | -M | -n] [-o] [-q] [--threads N] [-w LEN]
@@ -2024,9 +2024,9 @@ To update the bib file in place, use `--overwrite`, or give an output
 filename. Existing output files are backed up with `.bak` extensions,
 but `--overwrite` should still be used with care.
 
-**Options by task**:
+## Options by task:
 
-**Updating and checking**
+### Updating and checking
 
     -m, --mrlookup        use mrlookup to update bibtex entries (default)
     -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
@@ -2035,13 +2035,13 @@ but `--overwrite` should still be used with care.
     -x, --arxiv           add arXiv eprint fields to entries
     -c, --check           check all entries and report duplicates without writing a file
 
-**Duplicate listing**
+### Duplicate listing
 
     --list-duplicates     list duplicate papers and keys without writing a file
     --list-papers         list duplicate papers only
     --list-keys           list repeated citation keys only
 
-**Duplicate cleanup**
+### Duplicate cleanup
 
     --deduplicate         remove duplicate papers and rename repeated keys
     --remove-duplicate-papers
@@ -2052,7 +2052,7 @@ but `--overwrite` should still be used with care.
     -t, --texfile FILE.tex [FILE.tex ...]
                           update citations in listed TeX files during cleanup
 
-**Output and formatting**
+### Output and formatting
 
     --output FILE.bib     write the bibliography to this file
     -o, --overwrite       update/overwrite the bibtex file (use with care)
@@ -2062,7 +2062,7 @@ but `--overwrite` should still be used with care.
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
     --threads N           number of concurrent AMS lookups (default: 1)
 
-**Help and logging**
+### Help and logging
 
     -h, --help            show grouped options and exit
     -H, --Help            print full program description
@@ -2070,7 +2070,6 @@ but `--overwrite` should still be used with care.
     -q, --quiet           brief updates and missed lookups
     -qq                   only print errors
 
-**Note:**
 As described below, you should check the updated `.bib` file for errors
 before deleting the original [BibTeX] file.
 

@@ -6,7 +6,7 @@
 
 # **BibUpdate** - Change log
 
-## Version 2.1.0 - November 2026
+## Version 2.1.0 - 2026-11-3
 
 - Adds `--merge` option for merging BibTeX files
 - Adds missing fields from later copies when deduplicating or merging papers
@@ -14,7 +14,7 @@
 - Adds `--texfile` option for updating citations in LaTeX files when fixing duplicates or merging
 - Improves exposition in manual
 
-## Version 2.0.0 - November 2026 (initial CTAN release)
+## Version 2.0.0 - 2026-11-2 - CTAN release
 
 - Adds `--check-only`, `--skip-tests` and `--force` to the release command
 - Adds `--threads` for ordered concurrent AMS lookups; arXiv lookups remain sequential
@@ -54,19 +54,19 @@
 - Uses Markdown for the README and changelog
 - Uses `--deduplicate` for cleanup and `--list-duplicates` for listing
 
-## Version 1.3
+## Version 1.3 - 2014-08-19
 
 - Adds support for CTAN uploads
 - Generates README files in reStructuredText, LaTeX and PDF from built-in help
 - Improves option names
 
-## Version 1.2 - July 2014
+## Version 1.2 - 2014-07-23
 
 - Adds field wrapping to bibliography output
 - Backs up existing non-empty output files
 - Fixes the default for `--font-replace`
 
-## Version 1.1 - July 2014 (initial PyPI release)
+## Version 1.1 - 2014-07-02 - PyPI release
 
 - Adds limited MathSciNet validation
 - Adds options and improves documentation
@@ -74,4 +74,4 @@
 - Optimises `mrlookup` searches and BibTeX field extraction
 - Supports more general BibTeX field values
 
-## Version 1.0 - July 2012 (initial release)
+## Version 1.0 - July 2012
