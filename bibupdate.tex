@@ -22,6 +22,7 @@
 
 % BEGIN GENERATED BIBUPDATE PREAMBLE
 \usepackage[T1]{fontenc}
+\usepackage{needspace}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \makeatletter
 \newcommand{\BibUpdateOptionHeading}{\@startsection{paragraph}{4}{0pt}
@@ -147,23 +148,25 @@
 
 % BEGIN GENERATED BIBUPDATE HELP
 % Generated from bibupdate.__doc__; edit the help, then run python3 setup.py readme.
-Automatically update the entries in a bibtex file
+Automatically update bibtex files
 
 Usage:
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
-bibupdate [-h|-H] [-a] [-X] [-c] [-d] [-k] [-i FIELDS] [-l LOG]
+bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
           [-m | -M | -n] [-o] [-q] [--threads N] [-w LEN]
-          [--duplicates | --duplicate-papers | --duplicate-keys]
-          [--list-duplicates | --list-papers | --list-keys]
-          bibtexfile [outputfile]
+          [--deduplicate] [--remove-duplicate-papers] [--rename-duplicate-keys]
+          [--list-duplicates] [--list-papers] [--list-keys]
+          [-t FILE.tex [FILE.tex ...]]
+          [--output FILE.bib] bibtexfile [outputfile]
+bibupdate --merge [options] FILE.bib FILE.bib [FILE.bib ...]
 \end{Verbatim}
 
 This is a command line tool for updating the entries in a
-\href{http://www.bibtex.org/}{BibTeX} file using the free tools provided
-by the American Mathematical Society:
+\href{http://www.bibtex.org/}{BibTeX} file using the tools provided by
+the American Mathematical Society:
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{MathSciNet}
+\href{https://mathscinet.ams.org/mathscinet/publications-search}{MathSciNet}
 and \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef}.
 By default \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
 uses
@@ -172,20 +175,30 @@ to update \texttt{article}, \texttt{book}, \texttt{inproceedings} and
 \texttt{incollection} entries when they do not have an \texttt{mrnumber}
 field. Entries are not updated if they already have an \texttt{mrnumber}
 field, even an empty one, unless \texttt{-\/-all} or \texttt{-\/-check}
-is used. With the \texttt{-X} option,
-\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} looks for
-each paper in the \href{http://arxiv.org/}{arXiv} and adds
+is used. The \texttt{-x} option makes
+\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} look for
+each paper in the \href{http://arxiv.org/}{arXiv} and add
 \texttt{eprint} and \texttt{archiveprefix} fields for all the papers
-that it finds.
+that it finds. In addition,
+\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} is able to
+merge bibliography files, removing duplicate papers and keys in the
+process and, optionally, updating citations to renamed duplicate keys in
+\href{https://latex-project.org/}{LaTeX} files.
 
 By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
-writes the updated entries to a new file, with the filename given by
-adding a "updated\_" prefix. USing the update the bib file in place, use
-the \texttt{-\/-overwrite} option. This should be used with care because
-you can potentially lose data.
+does not change your original file. Instead, it writes the updated
+entries to a new file, with the filename given by adding an
+\texttt{updated\_} prefix, so \emph{file.bib} becomes
+\emph{updated\_file.bib}. To update the bib file in place, use
+\texttt{-\/-overwrite}, or give a output filename. Existing output files
+are backed up with \texttt{.bak} extensions, but \texttt{-\/-overwrite}
+should still be used with care.
+
+This should be used with care because you can potentially lose data.
 
 \textbf{Options by task}:
 
+\Needspace{4\baselineskip}
 \textbf{Updating and checking}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
@@ -193,44 +206,56 @@ you can potentially lose data.
 -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
 -n, --mref            use mref to update bibtex entries
 -a, --all             update or validate ALL BibTeX entries
--X, --arxiv           add arXiv eprint fields to entries
--c, --check           check all entries in the bib file and report duplicates
+-x, --arxiv           add arXiv eprint fields to entries
+-c, --check           check all entries and report duplicates without writing a file
 \end{Verbatim}
 
+\Needspace{4\baselineskip}
 \textbf{Duplicate listing}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
--d, --list-duplicates list duplicate papers and keys without writing a file
+--list-duplicates     list duplicate papers and keys without writing a file
 --list-papers         list duplicate papers only
 --list-keys           list repeated citation keys only
 \end{Verbatim}
 
+\Needspace{4\baselineskip}
 \textbf{Duplicate cleanup}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
---duplicates          remove duplicate papers and rename repeated keys
---duplicate-papers    remove duplicate papers, keeping the first
---duplicate-keys      rename repeated keys using authors and year
+--deduplicate         remove duplicate papers and rename repeated keys
+--remove-duplicate-papers
+                      remove duplicate papers, keeping the first
+--rename-duplicate-keys
+                      rename repeated keys using authors and year
+--merge               merge two or more .bib files and clean up duplicates
+-t, --texfile FILE.tex [FILE.tex ...]
+                      update citations in listed TeX files during cleanup
 \end{Verbatim}
 
+\Needspace{4\baselineskip}
 \textbf{Output and formatting}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
+--output FILE.bib     write the bibliography to this file
 -o, --overwrite       update/overwrite the bibtex file (use with care)
 -i FIELDS, --ignored-fields FIELDS
-                      comma separated list of bibtex fields to ignore
--k, --keep_fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
+                      space-separated list of bibtex fields to ignore
+-k, --keep-fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
 -w LEN, --wrap LEN    wrap bibtex fields to specified width
 --threads N           number of concurrent AMS lookups (default: 1)
 \end{Verbatim}
 
+\Needspace{4\baselineskip}
 \textbf{Reports and logging}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
--q, --quiet           brief updates and missed lookups (repeat to suppress)
+-q, --quiet           brief updates and missed lookups
+-qq                   only print errors
 -l LOG, --log LOG     log messages to specified file (defaults to stdout)
 \end{Verbatim}
 
+\Needspace{4\baselineskip}
 \textbf{Help and version}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
@@ -238,29 +263,24 @@ you can potentially lose data.
 -H, --Help            print full program description
 \end{Verbatim}
 
-\textbf{Note:} As described below, you should check the new file for
-errors before deleting the original version of your
+\textbf{Note:} As described below, you should check the updated
+\texttt{.bib} file for errors before deleting the original
 \href{http://www.bibtex.org/}{BibTeX} file.
 
-By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
-does not change your original database file. Instead, it creates a new
-file with the name \emph{updated\_file.bib}, if your original file was
-\emph{file.bib}. It is also possible to have it replace your current
-file (use carefully!), or to specify an output file.
-
 \href{http://www.bibtex.org/}{BibTeX} is widely used by the
-\href{http://en.wikipedia.org/wiki/LaTeX}{LaTeX} community to maintain
+\href{https://latex-project.org/}{LaTeX} community to maintain
 publication databases. This script attempts to add missing fields to the
 papers in a \href{http://www.bibtex.org/}{BibTeX} database file by
 querying
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-and getting the missing information from there. This is not completely
-routine because to search on
+and getting the missing publication data from there. This is not
+completely routine because an
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-you need either the authors or the title of the article and both of
-these can have non-standard representations. If the article is already
-published then it is also possible to use the publication year and its
-page numbers. To search on
+search requires either the names of the authors, or the title of the
+article, and both of these can have non-standard representations. If the
+article is already published, then it is also possible to use the
+publication year and its page numbers as part of the search. To search
+on
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
 we:
 
@@ -270,88 +290,80 @@ we:
   use the first author\textquotesingle s surname (accents and compound
   surnames can be problematic)
 \item
-  use numeric page ranges or a single numeric page, when available for a
-  published entry
+  use numeric page ranges, or a single numeric page, when available
 \item
   include the year for books, or when a numeric first page is available
 \item
-  use the cleaned title when no numeric first page is available
+  use the cleaned title when a numeric first page is not available
 \end{itemize}
 
-The author query uses only the first author\textquotesingle s surname:
+The author query uses only the first author\textquotesingle s surname
+because
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-does not interpret a \href{http://www.bibtex.org/}{BibTeX} list of
-authors joined by \texttt{and} as separate names. Braces used to protect
-capitals in titles (for example \texttt{\{Kac-Moody\}}) are removed for
-searching and matching; the title stored in the entry retains its
-braces.
+does not accept multiple author names joined by
+\textquotesingle and\textquotesingle. Braces used to protect capitals in
+titles (for example \texttt{\{Kac-Moody\}}) are removed when searching
+and matching, with the title stored in the
+\href{http://www.bibtex.org/}{BibTeX} file retaining its braces.
 
 If there is a unique match from
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-then \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} updates
-the fields supplied by
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
-except for the citation key and the fields excluded by
-\texttt{-\/-ignored-fields}. Local fields that are not supplied by
+then \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} updates
+the entry in the \href{http://www.bibtex.org/}{BibTeX} file using the
+field values returned by an
+\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
+search, except for the citation key and any fields excluded by
+\texttt{-\/-ignored-fields}. Any fields that are not returned by
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
 such as \texttt{eprint}, are retained. By default, a message is printed
-whenever existing fields in the database are changed. If the title of
-the retrieved paper does not (fuzzily) match that of the original
-article then the entry is NOT updated and a warning message is printed.
+whenever an entry in the database is changed. If the title of the
+retrieved paper does not (fuzzily) match that of the original article,
+then the entry is NOT updated and a warning message is printed.
 
-Although some care is taken to make sure that the new
-\href{http://www.bibtex.org/}{BibTeX} entries correspond to the same
-paper that the original entry referred to there is always a (small?)
-chance the new entry corresponds to an entirely different paper. In my
-experience this happens rarely, and mostly with unpublished manuscripts.
-In any case, before you delete your original
+Although some care is taken to ensure that the new
+\href{http://www.bibtex.org/}{BibTeX} entries correspond to the original
+entry in the \href{http://www.bibtex.org/}{BibTeX} file, there is always
+a (small?) chance the new entry corresponds to a completely different
+paper. In my experience this happens rarely, and mostly with unpublished
+manuscripts. In any case, before you delete your original
 \href{http://www.bibtex.org/}{BibTeX} file \emph{you are strongly
-advised to check the updated file BibTeX file carefully for errors!}
+advised to check the updated BibTeX file carefully for errors!}
 
-By default the program prints each updated entry\textquotesingle s
-citation key on its own line, followed by an indented bibliography-style
-reference. Report lines wrap at 78 columns, preserving the complete
-authors, title and publication details. If
-\href{http://arxiv.org/}{arXiv} fields are added as well, they appear in
-the same reference. \texttt{-\/-check} uses this compact layout to show
-entries that would change, without writing an updated file. You can also
-compare the original and updated files using \emph{diff}.
+By default, the program prints a compact listing of any updated paper in
+the \href{http://www.bibtex.org/}{BibTeX} file, including any added
+\href{http://arxiv.org/}{arXiv} fields. This can generate a lot of
+output the first time
+\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} is run on
+large files, later runs produce much less output.
 
 As \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} calls
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
+\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
 this program will only be useful if you have papers in your database
 that are listed in
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{MathSciNet}.
+\href{https://mathscinet.ams.org/mathscinet/publications-search}{MathSciNet}.
 As described below it is also possible to call
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{MathSciNet}
+\href{https://mathscinet.ams.org/mathscinet/publications-search}{MathSciNet}
 directly, however, this is less flexible because the \texttt{mrnumber}
 field for each paper is required.
 
-I wrote this script because I wanted to automatically add links to
-journals, the \href{http://arxiv.org/}{arXiv} and DOIs to the
-bibliographies of my papers using
-\href{http://www.ctan.org/pkg/hyperref}{hyperref}. This script allowed
-me to add the missing urls and DOI fields to my
-\href{http://www.bibtex.org/}{BibTeX} database. As a bonus the script
-helped me to correct many minor errors that had crept into my
-\href{http://www.bibtex.org/}{BibTeX} file over the years (for example,
-incorrect page numbers and publication years). Now I use the program to
-automatically update the preprint entries in my database when the papers
-appear in
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{MathSciNet}
-after they are published.
+I wrote this script because I wanted to automatically update the papers
+in my \href{http://www.bibtex.org/}{BibTeX} files when they were
+published, so that the file has up-to-date information on all of the
+papers in the file, including journal names,
+\href{http://arxiv.org/}{arXiv} links, and DOIs for each paper. As a
+bonus the script helped me to correct many minor errors that had crept
+into my \href{http://www.bibtex.org/}{BibTeX} file over the years (for
+example, incorrect page numbers and publication years).
 
 \subsection*{Options and defaults}\label{options-and-defaults}
 
-Without options,
-\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} uses
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-with one AMS lookup at a time, prints compact references to standard
-output, and writes \texttt{updated\_file.bib} beside the input
-\texttt{file.bib}. The \texttt{-\/-all}, \texttt{-\/-arxiv},
-\texttt{-\/-check}, \texttt{-\/-duplicates}, \texttt{-\/-keep\_fonts}
-and \texttt{-\/-overwrite} switches are off. Field-value wrapping is off
-(\texttt{-\/-wrap\ 0}).
+By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
+uses
+\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
+sending one AMS lookup request at a time. It prints a compact listing
+for each entry in the file that is updated, writing the updated
+\href{http://www.bibtex.org/}{BibTeX} file to \texttt{updated\_file.bib}
+if the original input file was \texttt{file.bib}.
 
 \subsubsection*{Updating and checking}\label{updating-and-checking}
 
@@ -359,7 +371,9 @@ and \texttt{-\/-overwrite} switches are off. Field-value wrapping is off
 
 \begin{BibUpdateOptionDescription}
 
-Use mrlookup to update bibtex entries (default)
+Use
+\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
+to update \href{http://www.bibtex.org/}{BibTeX} entries (default)
 
 \end{BibUpdateOptionDescription}
 
@@ -367,7 +381,9 @@ Use mrlookup to update bibtex entries (default)
 
 \begin{BibUpdateOptionDescription}
 
-Use mathscinet to update bibtex entries
+Use
+\href{https://mathscinet.ams.org/mathscinet/publications-search}{MathSciNet}
+to update \href{http://www.bibtex.org/}{BibTeX} entries
 
 \end{BibUpdateOptionDescription}
 
@@ -375,37 +391,29 @@ Use mathscinet to update bibtex entries
 
 \begin{BibUpdateOptionDescription}
 
-Use mref to update bibtex entries
-
-These three options select which of the free AMS tools is used to update
-the \href{http://www.bibtex.org/}{BibTeX} entries in the database. They
-are all free services provided by the American Mathematical Society and
-\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} talks to
-them through the JSON web APIs behind the AMS
-\href{https://mathscinet.ams.org/mathscinet/freetools}{free tools}
-pages.
+Use \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef} to
+update \href{http://www.bibtex.org/}{BibTeX} entries
 
 By default
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-is used. Its advantage is that it allows flexible searching by author,
-title, year and page numbers, so it can find papers even when they do
-not yet have an \texttt{mrnumber}.
+is used. Its main advantage is that it has a more flexible search
+mechanism using author, title, year and page numbers, so it can find
+papers even when they do not yet have an \texttt{mrnumber}.
 
-With \texttt{-M} the entry is looked up directly by its
-\texttt{mrnumber}. A field containing digits is required: missing, empty
-or non-numeric MR numbers are skipped, including with \texttt{-\/-all}
-and \texttt{-\/-check}.
+With \texttt{-M}, the entry is looked up using its \texttt{mrnumber}.
+Entries with missing, empty or non-numeric MR numbers are skipped,
+including with \texttt{-\/-all} and \texttt{-\/-check}.
 
-With \texttt{-n} the whole entry is handed to
+With \texttt{-n}, the full \href{http://www.bibtex.org/}{BibTeX} entry
+is handed to
 \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef} as a
-free-form reference. Its best matching record is still checked against
-the local title by
-\href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}. Like
+free-form reference. The best matching record is then checked against
+the original title. Like
 \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
 \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef}
 normally checks only \texttt{article}, \texttt{book},
 \texttt{inproceedings} and \texttt{incollection} entries without an
-\texttt{mrnumber} field; use \texttt{-\/-all} to check all recognised
+\texttt{mrnumber} field. Use \texttt{-\/-all} to check all recognised
 entry types.
 
 \end{BibUpdateOptionDescription}
@@ -416,25 +424,15 @@ entry types.
 
 Update or validate ALL BibTeX entries
 
-By default this switch is off. With
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-or \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef},
-enabling it checks all recognised entry types, including entries with an
-\texttt{mrnumber} field. With \texttt{-\/-arxiv}, it also checks entries
-that already have an \texttt{eprint} field. The \texttt{-M} tool always
-requires a usable MR number, even with \texttt{-\/-all}.
-
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-X,\ -\/-arxiv}}{-X, -\/-arxiv}}\label{-x---arxiv}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-x,\ -\/-arxiv}}{-x, -\/-arxiv}}\label{-x---arxiv}
 
 \begin{BibUpdateOptionDescription}
 
-Also add arXiv eprint fields to entries
+Update the arXiv entry for each paper
 
-This switch is off by default. In addition to the usual AMS lookup,
-query the \href{http://arxiv.org/}{arXiv} for each entry and, when the
-paper is found there, add \texttt{eprint} and \texttt{archiveprefix}
+When the paper is found, add \texttt{eprint} and \texttt{archiveprefix}
 fields to the \href{http://www.bibtex.org/}{BibTeX} entry:
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
@@ -443,46 +441,30 @@ archiveprefix = {arXiv}
 \end{Verbatim}
 
 \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} searches the
-\href{http://arxiv.org/}{arXiv} using the significant words in the title
-and only adds these fields when there is a unique paper whose title is a
-good (fuzzy) match. This option works together with any of the
-\texttt{-m}, \texttt{-M} or \texttt{-n} lookup tools. The
-\href{http://arxiv.org/}{arXiv} lookup changes only \texttt{eprint} and
-\texttt{archiveprefix}. Entries with an \texttt{eprint} field, even an
-empty one, are skipped unless \texttt{-a} or \texttt{-\/-check} is used.
-When such entries are checked, these two fields can be replaced. Entries
-without a usable title cannot be searched.
+\href{http://arxiv.org/}{arXiv} using the significant words in the
+title. A paper returned by the \href{http://arxiv.org/}{arXiv} is
+counted as a match only when there is a unique paper with a sufficiently
+good (fuzzy) match. The \texttt{-x} option can be combined with any of
+the \texttt{-m}, \texttt{-M} or \texttt{-n} lookup tools. Entries with
+an existing \texttt{eprint} field, even an empty one, are skipped unless
+\texttt{-a} or \texttt{-\/-check} is used. Entries without a usable
+title cannot be searched.
 
+As requested by the \href{http://arxiv.org/}{arXiv},
 \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} waits at
 least 3 seconds after each completed \href{http://arxiv.org/}{arXiv}
-request before starting the next one. Updating a large database with
-\texttt{-X} can therefore take a while.
+request before sending the next one. Updating a large database with
+\texttt{-x} can take a long time.
 
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{`-c, -\/-check}\label{-c---check}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-c,\ -\/-check}}{-c, -\/-check}}\label{-c---check}
 
 \begin{BibUpdateOptionDescription}
 
-Check all entries and report duplicates
-
-This switch is off by default. It prints each entry that would change as
-a compact reference, using the proposed database fields and retaining
-any other local fields. The original
-\href{http://www.bibtex.org/}{BibTeX} file is not changed and no output
-bibliography is written.Check mode implies \texttt{-\/-all}; it runs
-\href{http://arxiv.org/}{arXiv} lookups only when \texttt{-\/-arxiv} is
-also supplied. Proposed references remain visible even with
-\texttt{-qq}.
-
-Before network lookups, checks the input file for repeated citation keys
-and papers listed under different keys. Shared DOI, MR number or arXiv
-identifiers identify duplicate papers. Matching normalized titles and
-authors are reported as possible duplicates; capitalization braces,
-punctuation, spacing and given names versus initials are normalized.
-Warnings name the keys and source line numbers for review, and remain
-visible with \texttt{-\/-quiet}. Duplicate warnings appear in purple on
-terminals; log files and redirected output remain plain text.
+Check all entries and report duplicates, printing compact listings for
+each database entry that would be changed. No output file is written.
+This option implies \texttt{-\/-all}.
 
 \end{BibUpdateOptionDescription}
 
@@ -492,13 +474,7 @@ terminals; log files and redirected output remain plain text.
 
 Number of concurrent AMS lookups
 
-Use \texttt{-\/-threads\ 2} to overlap two AMS lookups. The default is
-one thread; the thread count must be a positive integer. This works with
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup},
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{MathSciNet}
-and \href{https://mathscinet.ams.org/mathscinet/freetools/mref}{MRef}.
-Entries and log messages retain their original order.
-
+Use \texttt{-\/-threads\ N} to run \texttt{N} searches in parallel.
 \href{http://arxiv.org/}{arXiv} lookups remain sequential and keep their
 delay between requests, regardless of the thread count.
 
@@ -506,17 +482,12 @@ delay between requests, regardless of the thread count.
 
 \subsubsection*{Duplicate listing}\label{duplicate-listing}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-d,\ -\/-list-duplicates}}{-d, -\/-list-duplicates}}\label{-d---list-duplicates}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-list-duplicates}}{-\/-list-duplicates}}\label{--list-duplicates}
 
 \begin{BibUpdateOptionDescription}
 
-List repeated papers and citation keys without changing the bibliography
-
-No network queries, output bibliography or backups are made, even with
-\texttt{-\/-overwrite} or an output filename. Warnings show keys and
-source lines in purple on terminals, remain visible with
-\texttt{-\/-quiet}, and are suppressed by \texttt{-qq}. If no duplicates
-are found, nothing is printed.
+List any duplicated papers, or citation keys, in the
+\href{http://www.bibtex.org/}{BibTeX} database.
 
 \end{BibUpdateOptionDescription}
 
@@ -526,6 +497,14 @@ are found, nothing is printed.
 
 List duplicate papers only, including possible title-and-author matches
 
+Two entries are treated as the same paper if they share a DOI, an MR
+number or an arXiv identifier. As a fallback, entries whose normalized
+titles and author lists (surnames and first initials) agree are reported
+as \emph{possible} duplicates. Entries linked through a chain of such
+matches are grouped together. The same rules are used by
+\texttt{-\/-check}, \texttt{-\/-remove-duplicate-papers} and
+\texttt{-\/-deduplicate}.
+
 \end{BibUpdateOptionDescription}
 
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-list-keys}}{-\/-list-keys}}\label{--list-keys}
@@ -534,102 +513,170 @@ List duplicate papers only, including possible title-and-author matches
 
 List repeated citation keys only
 
-The same listing-only behaviour and quiet levels apply to all three
-listing options. Listing options may be combined to show both kinds of
-duplicates.
-
 \end{BibUpdateOptionDescription}
 
 \subsubsection*{Duplicate cleanup}\label{duplicate-cleanup}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-duplicates} (alias
-\texttt{-\/-deduplicate})}{-\/-duplicates (alias -\/-deduplicate)}}\label{--duplicates-alias---deduplicate}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-deduplicate}}{-\/-deduplicate}}\label{--deduplicate}
 
 \begin{BibUpdateOptionDescription}
 
 Remove duplicate papers and rename repeated citation keys
 
-All duplicate modes are off by default. This offline cleanup first
-removes repeated papers, then renames repeated keys among the remaining
-entries. It makes no AMS or \href{http://arxiv.org/}{arXiv} queries. The
-output is \texttt{updated\_file.bib} beside \texttt{file.bib}, or the
-supplied output filename. Use \texttt{-\/-overwrite} to replace the
-input; existing non-empty output files are backed up to \texttt{.bak} as
-usual.
-
-The retained entries keep their original fields and formatting:
-ignored-field, font-conversion and wrapping options do not apply to
-cleanup. Cleanup cannot be combined with listing options or
-\texttt{-\/-check}. Other lookup options are ignored.
-
-\textbf{Changed meaning:} \texttt{-\/-duplicates} now writes a cleaned
-bibliography. Use \texttt{-d} or \texttt{-\/-list-duplicates} for the
-previous listing-only behaviour.
+This offline cleanup first removes repeated papers, then renames
+repeated keys among the remaining entries. As usual, the updated file is
+written to \texttt{updated\_file.bib} unless \texttt{-\/-overwrite} is
+used. Existing fields and formatting are preserved; missing fields are
+added from later copies. Ignored-field, font-conversion and wrapping
+options do not apply to cleanup. Cleanup cannot be combined with listing
+options or \texttt{-\/-check}, and the lookup options (\texttt{-m},
+\texttt{-M}, \texttt{-n}, \texttt{-a} and \texttt{-x}) are ignored.
 
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-duplicate-papers} (alias
-\texttt{-\/-remove-duplicate-papers})}{-\/-duplicate-papers (alias -\/-remove-duplicate-papers)}}\label{--duplicate-papers-alias---remove-duplicate-papers}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-remove-duplicate-papers}}{-\/-remove-duplicate-papers}}\label{--remove-duplicate-papers}
 
 \begin{BibUpdateOptionDescription}
 
 Remove repeated papers, keeping the first occurrence in file order
 
-Papers match through a shared DOI, MR number or arXiv identifier, or
-through matching normalized titles and authors, as described under
-\texttt{-\/-check}. Connected matches form one group, even when linked
-through different identifiers. Papers with the same citation key are
-also compared. Title-and-author matching is heuristic; inspect
+Papers are matched as described under \texttt{-\/-list-papers}.
+Title-and-author matching is heuristic, so inspect the output of
 \texttt{-\/-list-papers} before removing entries.
 
-Only the first entry\textquotesingle s fields are kept; fields from
-later entries are not merged. Each removal reports the removed key and
-the retained key, with source lines. Literal \texttt{crossref},
-\texttt{xref}, \texttt{related}, \texttt{entryset} and \texttt{xdata}
-references inside the bibliography are updated where the removed key has
-no surviving occurrence. String macros are preserved without expansion.
-Citations in external LaTeX files are not changed; use the reported
-mappings to update citations to removed keys.
+The first entry is the base. Missing fields are copied from later
+entries in file order. Existing fields, including empty fields, are
+kept; if several copies supply the same missing field, the first value
+wins. Field expressions and macros are copied without expansion. Each
+removal reports the removed key and the retained key, with source lines.
+Literal \texttt{crossref}, \texttt{xref}, \texttt{related},
+\texttt{entryset} and \texttt{xdata} references inside the bibliography
+are updated where the mapping is unambiguous. Use \texttt{-t} to update
+citations in external \href{https://latex-project.org/}{LaTeX} files;
+otherwise these must be updated manually.
 
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-duplicate-keys} (alias
-\texttt{-\/-rename-duplicate-keys})}{-\/-duplicate-keys (alias -\/-rename-duplicate-keys)}}\label{--duplicate-keys-alias---rename-duplicate-keys}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-rename-duplicate-keys}}{-\/-rename-duplicate-keys}}\label{--rename-duplicate-keys}
 
 \begin{BibUpdateOptionDescription}
 
-Rename repeated keys without deleting papers
+Rename repeated keys without deleting papers. The first occurrence of
+each key is kept. Duplicated key names are replaced with a key formed
+from the authors\textquotesingle{} surnames and the year, for example
+\texttt{AcharRiche2019}. Editors\textquotesingle{} names are used if
+there are no authors. If necessary, a suffix of \texttt{a}, \texttt{b},
+..., \texttt{z}, \texttt{aa}, etc. is added to ensure that the key names
+are unique.
 
-Keep the first occurrence of each key. Later occurrences receive a key
-formed from all authors\textquotesingle{} surnames and the year, for
-example \texttt{AcharRiche2019}. Editors are used if authors are
-missing, and \texttt{Anonymous} if neither is available. When the key is
-already used, add \texttt{a}, \texttt{b}, ..., \texttt{z}, \texttt{aa},
-etc., reserving all original keys and newly generated keys. Each rename
-is reported with its source line; use \texttt{-\/-log} to save the
-mappings. References to the original repeated key continue to refer to
-its first surviving occurrence; ambiguous citations need manual review.
+Using \texttt{-\/-remove-duplicate-papers} together with
+\texttt{-\/-rename-duplicate-keys} is equivalent to
+\texttt{-\/-deduplicate}.
 
-Using \texttt{-\/-duplicate-papers} together with
-\texttt{-\/-duplicate-keys} is equivalent to \texttt{-\/-duplicates}.
+\end{BibUpdateOptionDescription}
+
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-merge}}{-\/-merge}}\label{--merge}
+
+\begin{BibUpdateOptionDescription}
+
+Merge two or more BibTeX files, removing duplicate papers and keys
+
+The input files must have a \texttt{.bib} extension and are processed in
+the order given. When removing duplicates, the rules used by
+\texttt{-\/-deduplicate} apply: the first copy of each paper and key is
+kept, and any repeated keys are renamed using the
+authors\textquotesingle{} names and the publication year. Fields missing
+from the first copy are added from later entries, with earlier values
+having precedence. Retained entries, comments, preambles and string
+macros keep their original formatting; macros are not expanded for
+duplicate matching.
+
+Merging is offline and cannot be combined with \texttt{-\/-check} or
+duplicate listing options.
+
+By default, the merged \href{http://www.bibtex.org/}{BibTeX} file is
+written to \texttt{merged\_first.bib} if the first
+\href{http://www.bibtex.org/}{BibTeX} file is called \texttt{first.bib}.
+Use \texttt{-\/-output} to write to a different filename, or
+\texttt{-\/-overwrite} to overwrite the first
+\href{http://www.bibtex.org/}{BibTeX} file, which will be backed up with
+a \texttt{.bak} extension.
+
+\begin{Verbatim}[breaklines=true,fontsize=\small]
+bibupdate --merge first.bib second.bib --output combined.bib
+bibupdate --merge first.bib second.bib -t paper.tex --output combined.bib
+\end{Verbatim}
+
+Use \texttt{-t}/\texttt{-\/-texfile} to update unambiguous citations in
+associated \href{https://latex-project.org/}{LaTeX} files, which are
+backed up with \texttt{.bak} extensions.
+
+\end{BibUpdateOptionDescription}
+
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-t,\ -\/-texfile\ FILE.tex\ {[}FILE.tex\ ...{]}}}{-t, -\/-texfile FILE.tex {[}FILE.tex ...{]}}}\label{-t---texfile-filetex-filetex-}
+
+\begin{BibUpdateOptionDescription}
+
+Update citation keys in the listed
+\href{https://latex-project.org/}{LaTeX} files when cleaning duplicate
+entries
+
+This option requires \texttt{-\/-merge}, \texttt{-\/-deduplicate},
+\texttt{-\/-remove-duplicate-papers} or
+\texttt{-\/-rename-duplicate-keys}. The \texttt{.tex} and \texttt{.bib}
+extensions distinguish the TeX files from the bibliography and optional
+output file, for example:
+
+\begin{Verbatim}[breaklines=true,fontsize=\small]
+bibupdate --deduplicate -t chapter.tex appendix.tex papers.bib
+\end{Verbatim}
+
+Only unambiguous citation key mappings are applied to the
+\href{https://latex-project.org/}{LaTeX} files. If different papers
+share a key, citations of that key in the
+\href{https://latex-project.org/}{LaTeX} files are left unchanged and a
+warning is printed. The later papers are given new unique keys in the
+merged \href{http://www.bibtex.org/}{BibTeX} file.
+
+Standard literal citation commands such as
+\texttt{\textbackslash{}cite}, \texttt{\textbackslash{}citep},
+\texttt{\textbackslash{}nocite}, \texttt{\textbackslash{}parencite} and
+\texttt{\textbackslash{}textcites} are supported, including optional
+notes and comma-separated key lists. Comments, verbatim text and other
+commands are preserved. Custom citation macros are not expanded, and
+included files are only processed if explicitly listed.
+
+Before changing a TeX file, its original contents are saved with a
+\texttt{.bak} extension, for example \texttt{chapter.tex.bak}. Unchanged
+files are not rewritten or backed up. Existing backups of changed files
+are replaced.
 
 \end{BibUpdateOptionDescription}
 
 \subsubsection*{Output and formatting}\label{output-and-formatting}
 
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-\/-output\ FILE.bib}}{-\/-output FILE.bib}}\label{--output-filebib}
+
+\begin{BibUpdateOptionDescription}
+
+Write the bibliography to the specified file
+
+Use this option to specify the name of the new
+\href{http://www.bibtex.org/}{BibTeX} output file. An existing non-empty
+output file is first backed up with a \texttt{.bak} extension. This
+option cannot be combined with \texttt{-\/-overwrite}, or with an output
+file given as a second positional argument.
+
+\end{BibUpdateOptionDescription}
+
 \BibUpdateOptionHeading*{\texorpdfstring{\texttt{-o,\ -\/-overwrite}}{-o, -\/-overwrite}}\label{-o---overwrite}
 
 \begin{BibUpdateOptionDescription}
 
-Overwrite the existing bibtex file with the updated version
-
-This switch is off by default. Without it, the output is
-\texttt{updated\_file.bib} beside the input \texttt{file.bib}, or the
-output filename supplied as the last argument. With \texttt{-o}, the
-input file is replaced and any output filename is ignored. An existing,
-non-empty output file is copied to its \texttt{.bak} file before
-writing, including when \texttt{-o} replaces the input. An existing
-\texttt{.bak} is replaced.
+Overwrite the existing \href{http://www.bibtex.org/}{BibTeX} file with
+the updated version. The original file is first backed up with a
+\texttt{.bak} extension. This option cannot be combined with
+\texttt{-\/-output}.
 
 \end{BibUpdateOptionDescription}
 
@@ -637,8 +684,9 @@ writing, including when \texttt{-o} replaces the input. An existing
 
 \begin{BibUpdateOptionDescription}
 
-A string of \href{http://www.bibtex.org/}{BibTeX} fields to ignore when
-writing the updated file
+A space-separated list of \href{http://www.bibtex.org/}{BibTeX} fields
+to omit when writing the updated \href{http://www.bibtex.org/}{BibTeX}
+file
 
 By default \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
 removes the following fields from each
@@ -664,22 +712,12 @@ bibupdate -i "" file.bib                 # do not ignore any fields
 
 \end{BibUpdateOptionDescription}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-k,\ -\/-keep\_fonts}}{-k, -\/-keep\_fonts}}\label{-k---keep_fonts}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-k,\ -\/-keep-fonts}}{-k, -\/-keep-fonts}}\label{-k---keep-fonts}
 
 \begin{BibUpdateOptionDescription}
 
-do NOT replace fonts \texttt{\textbackslash{}Bbb},
-\texttt{\textbackslash{}germ} and \texttt{\textbackslash{}scr} in titles
-
-This switch is off by default, so supported font commands in titles are
-replaced. The \href{http://www.bibtex.org/}{BibTeX} entries generated by
-\href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
-use \texttt{\textbackslash{}Bbb}, \texttt{\textbackslash{}germ} and
-\texttt{\textbackslash{}scr} for the \texttt{\textbackslash{}mathbb},
-\texttt{\textbackslash{}mathfrak} and \texttt{\textbackslash{}mathscr}
-fonts. By default, in \emph{title} fields, these fonts specifications
-are automatically changed to the following more
-\href{http://en.wikipedia.org/wiki/LaTeX}{LaTeX} friendly fonts:
+Use \texttt{-k} to retain legacy LaTeX font names in titles. By default,
+the following font substitutions are automatically applied:
 
 \begin{itemize}
 \tightlist
@@ -694,8 +732,7 @@ are automatically changed to the following more
   \texttt{\textbackslash{}mathfrak\{X\}}
 \end{itemize}
 
-Use \texttt{-k} to retain the original font commands. This applies both
-to input titles and to titles retrieved from AMS.
+This applies both to input titles and to titles retrieved from AMS.
 
 \end{BibUpdateOptionDescription}
 
@@ -703,39 +740,29 @@ to input titles and to titles retrieved from AMS.
 
 \begin{BibUpdateOptionDescription}
 
-Wrap bibtex fields to specified width
+Wrap \href{http://www.bibtex.org/}{BibTeX} fields to specified width
 
-The default is \texttt{0}, which leaves field values unwrapped. A
-positive \texttt{LEN} wraps each field value to that width, with a tab
-before continuation lines. Field names, braces and indentation add to
-the total line length, so \texttt{LEN} is not a strict limit on complete
-output lines. Negative values are rejected.
+By default, lines are not wrapped (a wrap length of \texttt{0}). A
+positive wrap length \texttt{LEN} wraps each field value to that width,
+with a tab before continuation lines.
 
 \end{BibUpdateOptionDescription}
 
 \subsubsection*{Reports and logging}\label{reports-and-logging}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-q,\ -\/-quiet,\ -\/-quieter}}{-q, -\/-quiet, -\/-quieter}}\label{-q---quiet---quieter}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-q,\ -\/-quiet}}{-q, -\/-quiet}}\label{-q---quiet}
 
 \begin{BibUpdateOptionDescription}
 
 Print fewer messages
 
 By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
-prints a wrapped reference for each updated entry and a notice for each
-attempted AMS lookup that has no unique matching paper, including
-preprints. With \texttt{-q} or \texttt{-\/-quiet} it prints brief update
-notices, missed lookups and network warnings, without separator bars or
-field-by-field changes. Missed lookups appear in red when the output is
-a terminal; redirected output and log files contain plain text. Reports
-wrap at 78 columns. \texttt{-\/-quieter} is retained as an alias. Repeat
-the option (\texttt{-qq}) to suppress update notices and lookup
-warnings. Fatal errors are still reported.
-
-The \texttt{-\/-check} option prints proposed references in the compact
-layout, including when combined with \texttt{-q} or \texttt{-qq}.
-Duplicate warnings follow the same warning levels as missed lookups. Use
-\texttt{-l} to send messages to a log file.
+prints a compact reference for each paper that is updated, and a warning
+for each paper for which the AMS lookup fails. With \texttt{-q} (or
+\texttt{-\/-quiet}) only a one-line message is printed for updated
+papers, together with the warnings for failed lookups. With \texttt{-qq}
+only errors are printed. Failed lookups are printed in red when the
+output is a terminal.
 
 \end{BibUpdateOptionDescription}
 
@@ -745,9 +772,9 @@ Duplicate warnings follow the same warning levels as missed lookups. Use
 
 Log output to file (defaults to stdout)
 
-By default reports and warnings go to standard output. Use \texttt{-l}
-to write them to a file instead; an existing log file is replaced. Fatal
-errors are also printed to standard error.
+By default, reports and warnings go to standard output. Use \texttt{-l}
+to write them to a file. Existing log files are overwritten. Fatal
+errors are always printed to standard error.
 
 \end{BibUpdateOptionDescription}
 
@@ -757,7 +784,7 @@ errors are also printed to standard error.
 
 \begin{BibUpdateOptionDescription}
 
-Show a short list of options, grouped by task, and exit.
+Print a short list of command-line options
 
 \end{BibUpdateOptionDescription}
 
@@ -765,16 +792,7 @@ Show a short list of options, grouped by task, and exit.
 
 \begin{BibUpdateOptionDescription}
 
-Print this full description, including grouped options, defaults and
-known issues, and exit.
-
-\end{BibUpdateOptionDescription}
-
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-v,\ -\/-version}}{-v, -\/-version}}\label{-v---version}
-
-\begin{BibUpdateOptionDescription}
-
-Print the program version and licence, and exit.
+Print the full-help message
 
 \end{BibUpdateOptionDescription}
 
@@ -785,8 +803,8 @@ Print the program version and licence, and exit.
 \item
   \textbf{BibTeX syntax:} the parser uses regular expressions rather
   than a full BibTeX grammar. Use brace-delimited entries with one field
-  per line and braced values or simple bare words. Multiple fields on
-  one line, quoted values, \texttt{\#} concatenation, string-macro
+  per line and braced values or simple words. Multiple fields on one
+  line, quoted values, \texttt{\#} concatenation, string-macro
   expansion, and fields containing \texttt{@} or \texttt{=\{...\}} can
   be misread or omitted. Inspect the output carefully when using these
   forms. Duplicate listing and cleanup use a source scanner that
@@ -794,11 +812,11 @@ Print the program version and licence, and exit.
   not expanded for duplicate matching.
 \item
   \textbf{Title matching:} capitalization braces and apostrophes are
-  removed before searching and comparison. Dollar-delimited mathematics
-  is also removed, which can make distinct titles look alike. Other TeX
-  commands and accents are not fully decoded, so equivalent spellings
-  can still fail to match. A unique fuzzy title match is a heuristic,
-  not a guarantee that the paper is correct.
+  removed before searching and comparing. Mathematics is also removed,
+  which can make distinct titles look similar. TeX commands and accents
+  are not fully decoded, so equivalent spellings can still fail to
+  match. A unique fuzzy title match is a heuristic, not a guarantee that
+  a paper has been correctly identified.
 \item
   \textbf{Author names:}
   \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
@@ -809,24 +827,23 @@ Print the program version and licence, and exit.
 \item
   \textbf{Page numbers:} numeric ranges and single numeric pages are
   supported. Article identifiers and prefixed page numbers are not
-  handled reliably. If no numeric first page is extracted, the title is
-  used instead; for non-book entries the year is then omitted from the
-  query.
+  handled reliably. When only non-numeric page numbers are given, the
+  title is used instead. For non-book entries the year is then omitted
+  from the query.
 \item
   \textbf{Ambiguous or missing results:} an AMS entry is updated only
-  when one candidate survives title matching. No match or multiple
-  matches leave it unchanged and produce a missed-lookup notice. Entries
-  without a usable title have less protection against an incorrect
-  match. Skipped entries, such as those with an existing
-  \texttt{mrnumber} under the default settings, are not failed lookups
-  and produce no missed-lookup notice.
+  when there is a unique match. \href{http://www.bibtex.org/}{BibTeX}
+  entries are not changed when no matches, or multiple matches, are
+  found. Entries without a usable title are more likely to receive an
+  incorrect match. By default, skipped entries, such as those with an
+  existing \texttt{mrnumber}, are never changed.
 \item
   \textbf{arXiv searches:} searches use significant title words and
   examine at most ten results. Titles dominated by mathematics or short
-  words can be missed. No unique title match leaves the arXiv fields
-  unchanged; this is normally silent. With \texttt{-\/-all} or
-  \texttt{-\/-check}, an existing identifier can be replaced by the
-  identifier of the matching title, so review such changes.
+  words are more likely to receive false matches. As with
+  \href{https://mathscinet.ams.org/mathscinet/freetools/mrlookup}{mrlookup}
+  searches, the \href{http://arxiv.org/}{arXiv} fields for a paper are
+  updated only if there is a unique match.
 \item
   \textbf{Network services:} connections can fail, time out or return
   unexpected data. Requests use a 30-second timeout. Connection errors
@@ -835,19 +852,7 @@ Print the program version and licence, and exit.
 \end{itemize}
 % END GENERATED BIBUPDATE HELP
 
-\subsection*{Rebuilding the documentation}
-
-  The built-in help in \texttt{bibupdate.py} is the source for \texttt{README.md}
-  and the marked, generated regions of this manual. The title page, styling and
-  text outside those regions can be edited directly.
-
-  Run \texttt{python3 setup.py readme} in the source directory to refresh both
-  sources and compile \texttt{bibupdate.pdf}. This requires Python, Pandoc, and
-  \texttt{latexmk} from a TeX distribution. Use \texttt{--no-pdf} to refresh
-  only the sources; \texttt{docs} is an alias for \texttt{readme}.
-  \BibUpdate itself remains a self-contained Python script with no
-  non-standard dependencies.
-
+\Needspace{8\baselineskip}
 \subsection*{Feature requests and bug reports}
 
   Please make any feature requests and bug reports on the \BibUpdate github
@@ -864,9 +869,12 @@ Print the program version and licence, and exit.
 % BEGIN GENERATED BIBUPDATE LICENCE
 \subsection*{Licence}\label{licence}
 
-Andrew Mathas GNU General Public License, Version 3, 29 June 2007
+Andrew Mathas
+
+GNU General Public License, Version 3, 29 June 2007
+
 \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate} Version
-2.0.0. Copyright (C) 2014-2026
+2.0.0. Copyright (C) 2012-2026
 
 This program is free software: you can redistribute it and/or modify it
 under the terms of the GNU General Public License

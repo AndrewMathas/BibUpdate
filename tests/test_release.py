@@ -158,6 +158,32 @@ class ReleaseTests(unittest.TestCase):
         (self.directory / "CHANGES.md").write_text("**v1.2** -- CTAN release\n")
         self.assertFalse(any(f.startswith("Changelog:") for f in self.checks(skip_tests=True)))
 
+    def test_changelog_title_and_badges_can_precede_the_version_heading(self):
+        for heading in ["## Version 1.2.3 - 2020-11-02", "**v1.2.3** -- CTAN release"]:
+            with self.subTest(heading=heading):
+                (self.directory / "CHANGES.md").write_text(
+                    "[![Version](https://img.shields.io/badge/version-9.9.9-success)](https://example.invalid/)\n"
+                    "[![Python](https://img.shields.io/badge/python-3.9-important)](https://example.invalid/)\n"
+                    "\n# **BibUpdate** - Change log\n\n" + heading + "\n\n- Release notes\n"
+                )
+                self.assertFalse(any(f.startswith("Changelog:") for f in self.checks(skip_tests=True)))
+
+    def test_first_version_heading_must_match_even_if_a_later_heading_matches(self):
+        (self.directory / "CHANGES.md").write_text(
+            "# **BibUpdate** - Change log\n\n## Version 1.2.4\n\n"
+            "- New changes\n\n## Version 1.2.3\n\n- Old changes\n"
+        )
+        self.assert_failed("Changelog")
+
+    def test_titled_changelog_still_requires_a_version_heading_and_matching_date(self):
+        for contents in [
+            "# **BibUpdate** - Change log\n\n- Requires Python 3.9\n",
+            "# **BibUpdate** - Change log\n\n## Version 1.2.3 - 2020-11-03\n",
+        ]:
+            with self.subTest(contents=contents):
+                (self.directory / "CHANGES.md").write_text(contents)
+                self.assert_failed("Changelog")
+
     def test_untracked_files_are_reported(self):
         (self.directory / "forgotten.txt").write_text("Untracked release input")
         self.assert_failed("Git working tree")

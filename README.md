@@ -1,34 +1,42 @@
 # bibupdate
 
 [![Version](https://img.shields.io/badge/version-2.0.0-success)](https://github.com/AndrewMathas/BibUpdate)
-[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)
-[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
+[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
 [![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
-Automatically update the entries in a bibtex file
+Automatically update bibtex files
 
 Usage:
 
-    bibupdate [-h|-H] [-a] [-X] [-c] [-d] [-k] [-i FIELDS] [-l LOG]
+    bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
               [-m | -M | -n] [-o] [-q] [--threads N] [-w LEN]
-              [--duplicates | --duplicate-papers | --duplicate-keys]
-              [--list-duplicates | --list-papers | --list-keys]
-              bibtexfile [outputfile]
+              [--deduplicate] [--remove-duplicate-papers] [--rename-duplicate-keys]
+              [--list-duplicates] [--list-papers] [--list-keys]
+              [-t FILE.tex [FILE.tex ...]]
+              [--output FILE.bib] bibtexfile [outputfile]
+    bibupdate --merge [options] FILE.bib FILE.bib [FILE.bib ...]
 
 This is a command line tool for updating the entries in a [BibTeX] file using the
-free tools provided by the American Mathematical Society: [mrlookup], [MathSciNet]
+tools provided by the American Mathematical Society: [mrlookup], [MathSciNet]
 and [MRef]. By default [bibupdate] uses [mrlookup] to update `article`, `book`,
 `inproceedings` and `incollection` entries when they do not have an
 `mrnumber` field. Entries are not updated if they already have an
 `mrnumber` field, even an empty one, unless `--all` or `--check`
-is used. With the `-X` option, [bibupdate] looks for each paper in the
-[arXiv] and adds `eprint` and `archiveprefix` fields for all the papers
-that it finds.
+is used. The `-x` option makes [bibupdate] look for each paper in the
+[arXiv] and add `eprint` and `archiveprefix` fields for all the papers
+that it finds. In addition, [bibupdate] is able to merge bibliography
+files, removing duplicate papers and keys in the process and,
+optionally, updating citations to renamed duplicate keys in [LaTeX] files.
 
-By default, [bibupdate] writes the updated entries to a new file, with the
-filename given by adding a "updated_" prefix. USing the  update the bib file
-in place, use the `--overwrite` option. This should be used with care
-because you can potentially lose data.
+By default, [bibupdate] does not change your original file. Instead, it
+writes the updated entries to a new file, with the filename given by 
+adding an `updated_` prefix, so *file.bib* becomes *updated_file.bib*.
+To update the bib file in place, use `--overwrite`, or give a output
+filename. Existing output files are backed up with `.bak` extensions,
+but `--overwrite` should still be used with care.
+
+This should be used with care because you
+can potentially lose data.
 
 **Options by task**:
 
@@ -38,33 +46,40 @@ because you can potentially lose data.
     -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
     -n, --mref            use mref to update bibtex entries
     -a, --all             update or validate ALL BibTeX entries
-    -X, --arxiv           add arXiv eprint fields to entries
-    -c, --check           check all entries in the bib file and report duplicates
+    -x, --arxiv           add arXiv eprint fields to entries
+    -c, --check           check all entries and report duplicates without writing a file
 
 **Duplicate listing**
 
-    -d, --list-duplicates list duplicate papers and keys without writing a file
+    --list-duplicates     list duplicate papers and keys without writing a file
     --list-papers         list duplicate papers only
     --list-keys           list repeated citation keys only
 
 **Duplicate cleanup**
 
-    --duplicates          remove duplicate papers and rename repeated keys
-    --duplicate-papers    remove duplicate papers, keeping the first
-    --duplicate-keys      rename repeated keys using authors and year
+    --deduplicate         remove duplicate papers and rename repeated keys
+    --remove-duplicate-papers
+                          remove duplicate papers, keeping the first
+    --rename-duplicate-keys
+                          rename repeated keys using authors and year
+    --merge               merge two or more .bib files and clean up duplicates
+    -t, --texfile FILE.tex [FILE.tex ...]
+                          update citations in listed TeX files during cleanup
 
 **Output and formatting**
 
+    --output FILE.bib     write the bibliography to this file
     -o, --overwrite       update/overwrite the bibtex file (use with care)
     -i FIELDS, --ignored-fields FIELDS
-                          comma separated list of bibtex fields to ignore
-    -k, --keep_fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
+                          space-separated list of bibtex fields to ignore
+    -k, --keep-fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
     --threads N           number of concurrent AMS lookups (default: 1)
 
 **Reports and logging**
 
-    -q, --quiet           brief updates and missed lookups (repeat to suppress)
+    -q, --quiet           brief updates and missed lookups
+    -qq                   only print errors
     -l LOG, --log LOG     log messages to specified file (defaults to stdout)
 
 **Help and version**
@@ -73,259 +88,272 @@ because you can potentially lose data.
     -H, --Help            print full program description
 
 **Note:**
-As described below, you should check the new file for errors before deleting the
-original version of your [BibTeX] file.
-
-By default, [bibupdate] does not change your original database file. Instead, it creates a
-new file with the name *updated_file.bib*, if your original file was *file.bib*.
-It is also possible to have it replace your current file (use carefully!), or to
-specify an output file.
+As described below, you should check the updated `.bib` file for errors
+before deleting the original [BibTeX] file.
 
 [BibTeX] is widely used by the [LaTeX] community to maintain publication databases.
 This script attempts to add missing fields to the papers in a [BibTeX] database
-file by querying [mrlookup] and getting the missing information from there. This
-is not completely routine because to search on [mrlookup] you need either the
-authors or the title of the article and both of these can have non-standard
-representations. If the article is already published then it is also possible to
-use the publication year and its page numbers. To search on [mrlookup] we:
+file by querying [mrlookup] and getting the missing publication data from there.
+This is not completely routine because an [mrlookup] search requires either the
+names of the authors, or the title of the article, and both of these can have
+non-standard representations. If the article is already published, then it is
+also possible to use the publication year and its page numbers as part
+of the search. To search on [mrlookup] we:
 
 - use the first author's surname (accents and compound surnames can be problematic)
-- use numeric page ranges or a single numeric page, when available for a
-  published entry
+- use numeric page ranges, or a single numeric page, when available
 - include the year for books, or when a numeric first page is available
-- use the cleaned title when no numeric first page is available
+- use the cleaned title when a numeric first page is not available
 
-The author query uses only the first author's surname: [mrlookup] does not
-interpret a [BibTeX] list of authors joined by `and` as separate names. Braces
-used to protect capitals in titles (for example `{Kac-Moody}`) are removed
-for searching and matching; the title stored in the entry retains its braces.
+The author query uses only the first author's surname because [mrlookup] does not
+accept multiple author names joined by 'and'. Braces used to protect capitals in
+titles (for example `{Kac-Moody}`) are removed when searching and
+matching, with the title stored in the [BibTeX] file retaining its braces.
 
-If there is a unique match from [mrlookup] then [bibupdate]
-updates the fields supplied by [mrlookup], except for the citation key and the
-fields excluded by `--ignored-fields`. Local fields that are not supplied by
-[mrlookup], such as `eprint`, are retained. By default, a message is printed whenever
-existing fields in the database are changed. If the title of the retrieved paper
-does not (fuzzily) match that of the original article then the entry is NOT
+If there is a unique match from [mrlookup], then [bibupdate] updates the entry in
+the [BibTeX] file using the field values returned by an [mrlookup] search, except for
+the citation key and any fields excluded by `--ignored-fields`. Any fields that are
+not returned by [mrlookup], such as `eprint`, are retained. By default, a message is
+printed whenever an entry in the database is changed. If the title of the retrieved paper
+does not (fuzzily) match that of the original article, then the entry is NOT
 updated and a warning message is printed.
 
-Although some care is taken to make sure that the new [BibTeX] entries correspond
-to the same paper that the original entry referred to there is always a (small?)
-chance the new entry corresponds to an entirely different paper. In my
+Although some care is taken to ensure that the new [BibTeX] entries correspond
+to the original entry in the [BibTeX] file, there is always a (small?)
+chance the new entry corresponds to a completely different paper. In my
 experience this happens rarely, and mostly with unpublished manuscripts. In any
 case, before you delete your original [BibTeX] file *you are strongly advised to
-check the updated file BibTeX file carefully for errors!*
+check the updated BibTeX file carefully for errors!*
 
-By default the program prints each updated entry's citation key on its own line,
-followed by an indented bibliography-style reference. Report lines wrap at 78
-columns, preserving the complete authors, title and publication details. If
-[arXiv] fields are added as well, they appear in the same reference. `--check`
-uses this compact layout to show entries that would change, without writing an
-updated file. You can also compare the original and updated files using *diff*.
+By default, the program prints a compact listing of any updated paper in the
+[BibTeX] file, including any added [arXiv] fields. This can generate a
+lot of output the first time [bibupdate] is run on large files, later runs
+produce much less output.
 
-As [bibupdate] calls [mrlookup] this program will only be useful if you have
+As [bibupdate] calls [mrlookup], this program will only be useful if you have
 papers in your database that are listed in [MathSciNet]. As described below it is
 also possible to call [MathSciNet] directly, however, this is less flexible
 because the `mrnumber` field for each paper is required.
 
-I wrote this script because I wanted to automatically add links to journals, the
-[arXiv] and DOIs to the bibliographies of my papers using [hyperref]. This script
-allowed me to add the missing urls and DOI fields to my [BibTeX] database. As a
-bonus the script helped me to correct many minor errors that had crept into my
-[BibTeX] file over the years (for example, incorrect page numbers and publication
-years). Now I use the program to automatically update the preprint entries in my
-database when the papers appear in [MathSciNet] after they are published.
+I wrote this script because I wanted to automatically update the papers
+in my [BibTeX] files when they were published, so that the file has
+up-to-date information on all of the papers in the file, including
+journal names, [arXiv] links, and DOIs for each paper. As a bonus
+the script helped me to correct many minor errors that had crept
+into my [BibTeX] file over the years (for example, incorrect page
+numbers and publication years).
 
 ## Options and defaults
 
-Without options, [bibupdate] uses [mrlookup] with one AMS lookup at a time,
-prints compact references to standard output, and writes `updated_file.bib`
-beside the input `file.bib`. The `--all`, `--arxiv`, `--check`, `--duplicates`,
-`--keep_fonts` and `--overwrite` switches are off. Field-value wrapping is off (`--wrap 0`).
+By default, [bibupdate] uses [mrlookup], sending one AMS lookup request at
+a time. It prints a compact listing for each entry in the file that is
+updated, writing the updated [BibTeX] file to `updated_file.bib` if the
+original input file was `file.bib`.
 
 ### Updating and checking
 
 #### `-m, --mrlookup`
 
-Use mrlookup to update bibtex entries (default)
+Use [mrlookup] to update [BibTeX] entries (default)
 
 #### `-M, --mathscinet`
 
-Use mathscinet to update bibtex entries
+Use [MathSciNet] to update [BibTeX] entries
 
 #### `-n, --mref`
 
-Use mref to update bibtex entries
+Use [MRef] to update [BibTeX] entries
 
-These three options select which of the free AMS tools is used to update the
-[BibTeX] entries in the database. They are all free services provided by the
-American Mathematical Society and [bibupdate] talks to them through the JSON
-web APIs behind the AMS [free tools] pages.
+By default [mrlookup] is used. Its main advantage is that it has a more
+flexible search mechanism using author, title, year and page numbers,
+so it can find papers even when they do not yet have an `mrnumber`.
 
-By default [mrlookup] is used. Its advantage is that it allows flexible
-searching by author, title, year and page numbers, so it can find papers even
-when they do not yet have an `mrnumber`.
+With `-M`, the entry is looked up using its `mrnumber`. Entries with missing,
+empty or non-numeric MR numbers are skipped, including with `--all` and `--check`.
 
-With `-M` the entry is looked up directly by its `mrnumber`. A field containing
-digits is required: missing, empty or non-numeric MR numbers are skipped,
-including with `--all` and `--check`.
-
-With `-n` the whole entry is handed to [MRef] as a free-form reference. Its
-best matching record is still checked against the local title by [bibupdate].
-Like [mrlookup], [MRef] normally checks only `article`, `book`,
-`inproceedings` and `incollection` entries without an `mrnumber` field; use
-`--all` to check all recognised entry types.
+With `-n`, the full [BibTeX] entry is handed to [MRef] as a free-form
+reference. The best matching record is then checked against the original
+title. Like [mrlookup], [MRef] normally checks only `article`, `book`,
+`inproceedings` and `incollection` entries without an `mrnumber` field.
+Use `--all` to check all recognised entry types.
 
 #### `-a, --all`
 
 Update or validate ALL BibTeX entries
 
-By default this switch is off. With [mrlookup] or [MRef], enabling it checks all
-recognised entry types, including entries with an `mrnumber` field. With
-`--arxiv`, it also checks entries that already have an `eprint` field.
-The `-M` tool always requires a usable MR number, even with `--all`.
+#### `-x, --arxiv`
 
-#### `-X, --arxiv`
+Update the arXiv entry for each paper
 
-Also add arXiv eprint fields to entries
-
-This switch is off by default. In addition to the usual AMS lookup, query the [arXiv] for each entry
-and, when the paper is found there, add `eprint` and `archiveprefix`
-fields to the [BibTeX] entry:
+When the paper is found, add `eprint` and `archiveprefix` fields to
+the [BibTeX] entry:
 
     eprint = {2211.07069},
     archiveprefix = {arXiv}
 
-[bibupdate] searches the [arXiv] using the significant words in the title and
-only adds these fields when there is a unique paper whose title is a good
-(fuzzy) match. This option works together with any of the `-m`, `-M` or
-`-n` lookup tools. The [arXiv] lookup changes only `eprint` and `archiveprefix`.
-Entries with an `eprint` field, even an empty one, are skipped unless `-a` or
-`--check` is used. When such entries are checked, these two fields can be replaced.
-Entries without a usable title cannot be searched.
+[bibupdate] searches the [arXiv] using the significant words in the
+title. A paper returned by the [arXiv] is counted as a match only
+when there is a unique paper with a sufficiently good (fuzzy) match.
+The `-x` option can be combined with any of the `-m`, `-M` or
+`-n` lookup tools. Entries with an existing `eprint` field, even an
+empty one, are skipped unless `-a` or `--check` is used. Entries
+without a usable title cannot be searched.
 
-[bibupdate] waits at least 3 seconds after each completed [arXiv]
-request before starting the next one. Updating a large database
-with `-X` can therefore take a while.
+As requested by the [arXiv], [bibupdate] waits at least 3
+seconds after each completed [arXiv] request before sending the next one.
+Updating a large database with `-x` can take a long time.
 
-#### `-c, --check
+#### `-c, --check`
 
-Check all entries and report duplicates
-
-This switch is off by default. It prints each entry that would change as a
-compact reference, using the proposed database fields and retaining any
-other local fields. The original [BibTeX] file is not changed and no output
-bibliography is written.Check mode implies `--all`; it runs [arXiv] lookups
-only when `--arxiv` is also supplied. Proposed references remain visible even
-with `-qq`.
-
-Before network lookups, checks the input file for repeated citation keys and
-papers listed under different keys. Shared DOI, MR number or arXiv identifiers
-identify duplicate papers. Matching normalized titles and authors are reported
-as possible duplicates; capitalization braces, punctuation, spacing and given
-names versus initials are normalized. Warnings name the keys and source line
-numbers for review, and remain visible with `--quiet`. Duplicate warnings
-appear in purple on terminals; log files and redirected output remain plain
-text.
+Check all entries and report duplicates, printing compact listings for each
+database entry that would be changed. No output file is written. This option
+implies `--all`.
 
 #### `--threads N`
 
 Number of concurrent AMS lookups
 
-Use `--threads 2` to overlap two AMS lookups. The default is one thread;
-the thread count must be a positive integer. This works with [mrlookup],
-[MathSciNet] and [MRef]. Entries and log messages retain their original order.
-
-[arXiv] lookups remain sequential and keep their delay between requests,
-regardless of the thread count.
+Use `--threads N` to run `N` searches in parallel. [arXiv] lookups remain
+sequential and keep their delay between requests, regardless of the
+thread count.
 
 ### Duplicate listing
 
-#### `-d, --list-duplicates`
+#### `--list-duplicates`
 
-List repeated papers and citation keys without changing the bibliography
-
-No network queries, output bibliography or backups are made, even with
-`--overwrite` or an output filename. Warnings show keys and source lines in
-purple on terminals, remain visible with `--quiet`, and are suppressed by `-qq`.
-If no duplicates are found, nothing is printed.
+List any duplicated papers, or citation keys, in the [BibTeX] database.
 
 #### `--list-papers`
 
 List duplicate papers only, including possible title-and-author matches
 
+Two entries are treated as the same paper if they share a DOI, an MR number
+or an arXiv identifier. As a fallback, entries whose normalized titles and
+author lists (surnames and first initials) agree are reported as *possible*
+duplicates. Entries linked through a chain of such matches are grouped
+together. The same rules are used by `--check`, `--remove-duplicate-papers`
+and `--deduplicate`.
+
 #### `--list-keys`
 
 List repeated citation keys only
 
-The same listing-only behaviour and quiet levels apply to all three listing
-options. Listing options may be combined to show both kinds of duplicates.
-
 ### Duplicate cleanup
 
-#### `--duplicates` (alias `--deduplicate`)
+#### `--deduplicate`
 
 Remove duplicate papers and rename repeated citation keys
 
-All duplicate modes are off by default. This offline cleanup first removes
-repeated papers, then renames repeated keys among the remaining entries.
-It makes no AMS or [arXiv] queries. The output is `updated_file.bib` beside
-`file.bib`, or the supplied output filename. Use `--overwrite` to replace the
-input; existing non-empty output files are backed up to `.bak` as usual.
+This offline cleanup first removes repeated papers, then renames repeated
+keys among the remaining entries. As usual, the updated file is written
+to `updated_file.bib` unless `--overwrite` is used.
+Existing fields and formatting are preserved; missing fields are added from
+later copies. Ignored-field, font-conversion and wrapping options do not apply
+to cleanup. Cleanup cannot be combined with listing options or `--check`, and
+the lookup options (`-m`, `-M`, `-n`, `-a` and `-x`) are ignored.
 
-The retained entries keep their original fields and formatting: ignored-field,
-font-conversion and wrapping options do not apply to cleanup. Cleanup cannot
-be combined with listing options or `--check`. Other lookup options are ignored.
-
-**Changed meaning:** `--duplicates` now writes a cleaned bibliography.
-Use `-d` or `--list-duplicates` for the previous listing-only behaviour.
-
-#### `--duplicate-papers` (alias `--remove-duplicate-papers`)
+#### `--remove-duplicate-papers`
 
 Remove repeated papers, keeping the first occurrence in file order
 
-Papers match through a shared DOI, MR number or arXiv identifier, or through
-matching normalized titles and authors, as described under `--check`.
-Connected matches form one group, even when linked through different identifiers.
-Papers with the same citation key are also compared. Title-and-author matching
-is heuristic; inspect `--list-papers` before removing entries.
+Papers are matched as described under `--list-papers`. Title-and-author
+matching is heuristic, so inspect the output of `--list-papers` before
+removing entries.
 
-Only the first entry's fields are kept; fields from later entries are not merged.
-Each removal reports the removed key and the retained key, with source lines.
-Literal `crossref`, `xref`, `related`, `entryset` and `xdata` references inside the
-bibliography are updated where the removed key has no surviving occurrence.
-String macros are preserved without expansion. Citations in external LaTeX files
-are not changed; use the reported mappings to update citations to removed keys.
+The first entry is the base. Missing fields are copied from later entries in
+file order. Existing fields, including empty fields, are kept; if several copies
+supply the same missing field, the first value wins. Field expressions and
+macros are copied without expansion. Each removal reports the removed key and
+the retained key, with source lines. Literal `crossref`, `xref`, `related`,
+`entryset` and `xdata` references inside the bibliography are updated where
+the mapping is unambiguous. Use `-t` to update citations in external [LaTeX]
+files; otherwise these must be updated manually.
 
-#### `--duplicate-keys` (alias `--rename-duplicate-keys`)
+#### `--rename-duplicate-keys`
 
-Rename repeated keys without deleting papers
+Rename repeated keys without deleting papers. The first occurrence of each
+key is kept. Duplicated key names are replaced with a key formed
+from the authors' surnames and the year, for example `AcharRiche2019`.
+Editors' names are used if there are no authors. If necessary, a suffix
+of `a`, `b`, ..., `z`, `aa`, etc. is added to ensure that the key names
+are unique.
 
-Keep the first occurrence of each key. Later occurrences receive a key formed
-from all authors' surnames and the year, for example `AcharRiche2019`.
-Editors are used if authors are missing, and `Anonymous` if neither is available.
-When the key is already used, add `a`, `b`, ..., `z`, `aa`, etc., reserving all
-original keys and newly generated keys. Each rename is reported with its source
-line; use `--log` to save the mappings. References to the original repeated key continue to refer to its first
-surviving occurrence; ambiguous citations need manual review.
+Using `--remove-duplicate-papers` together with `--rename-duplicate-keys` is equivalent
+to `--deduplicate`.
 
-Using `--duplicate-papers` together with `--duplicate-keys` is equivalent
-to `--duplicates`.
+#### `--merge`
+
+Merge two or more BibTeX files, removing duplicate papers and keys
+
+The input files must have a `.bib` extension and are processed in the
+order given. When removing duplicates, the rules used by `--deduplicate`
+apply: the first copy of each paper and key is kept, and any repeated
+keys are renamed using the authors' names and the publication year.
+Fields missing from the first copy are added from
+later entries, with earlier values having precedence. Retained entries,
+comments, preambles and string macros keep their original formatting;
+macros are not expanded for duplicate matching.
+
+Merging is offline and cannot be combined with `--check` or duplicate
+listing options.
+
+By default, the merged [BibTeX] file is written to `merged_first.bib` if 
+the first [BibTeX] file is called `first.bib`. Use `--output` to
+write to a different filename, or `--overwrite` to overwrite the
+first [BibTeX] file, which will be backed up with a `.bak` extension.
+
+    bibupdate --merge first.bib second.bib --output combined.bib
+    bibupdate --merge first.bib second.bib -t paper.tex --output combined.bib
+
+Use `-t`/`--texfile` to update unambiguous citations in associated [LaTeX]
+files, which are backed up with `.bak` extensions.
+
+#### `-t, --texfile FILE.tex [FILE.tex ...]`
+
+Update citation keys in the listed [LaTeX] files when cleaning duplicate entries
+
+This option requires `--merge`, `--deduplicate`, `--remove-duplicate-papers` or
+`--rename-duplicate-keys`. The `.tex` and `.bib` extensions distinguish the
+TeX files from the bibliography and optional output file, for example:
+
+    bibupdate --deduplicate -t chapter.tex appendix.tex papers.bib
+
+Only unambiguous citation key mappings are applied to the [LaTeX] files.
+If different papers share a key, citations of that key in the [LaTeX] files
+are left unchanged and a warning is printed. The later papers are given new
+unique keys in the merged [BibTeX] file.
+
+Standard literal citation commands such as `\cite`, `\citep`, `\nocite`,
+`\parencite` and `\textcites` are supported, including optional notes and
+comma-separated key lists. Comments, verbatim text and other commands are
+preserved. Custom citation macros are not expanded, and included files are
+only processed if explicitly listed.
+
+Before changing a TeX file, its original contents are saved with a `.bak`
+extension, for example `chapter.tex.bak`. Unchanged files are not rewritten
+or backed up. Existing backups of changed files are replaced.
 
 ### Output and formatting
 
+#### `--output FILE.bib`
+
+Write the bibliography to the specified file
+
+Use this option to specify the name of the new [BibTeX] output file. An
+existing non-empty output file is first backed up with a `.bak` extension.
+This option cannot be combined with `--overwrite`, or with an output file
+given as a second positional argument.
+
 #### `-o, --overwrite`
 
-Overwrite the existing bibtex file with the updated version
-
-This switch is off by default. Without it, the output is `updated_file.bib`
-beside the input `file.bib`, or the output filename supplied as the last
-argument. With `-o`, the input file is replaced and any output filename is
-ignored. An existing, non-empty output file is copied to its `.bak` file before
-writing, including when `-o` replaces the input. An existing `.bak` is replaced.
+Overwrite the existing [BibTeX] file with the updated version. The original
+file is first backed up with a `.bak` extension. This option cannot be
+combined with `--output`.
 
 #### `-i FIELDS, --ignored-fields=FIELDS`
 
-A string of [BibTeX] fields to ignore when writing the updated file
+A space-separated list of [BibTeX] fields to omit when writing the updated
+[BibTeX] file
 
 By default [bibupdate] removes the following fields from each [BibTeX] entry:
 
@@ -340,109 +368,87 @@ every field:
     bibupdate -i coden -i fjournal file.bib  # ignore coden and fjournal
     bibupdate -i "" file.bib                 # do not ignore any fields
 
-#### `-k, --keep_fonts`
+#### `-k, --keep-fonts`
 
-do NOT replace fonts `\Bbb`, `\germ` and `\scr` in titles
-
-This switch is off by default, so supported font commands in titles are replaced.
-The [BibTeX] entries generated by [mrlookup] use `\Bbb`, `\germ` and `\scr` for the
-`\mathbb`, `\mathfrak` and `\mathscr` fonts. By default, in *title* fields,
-these fonts specifications are automatically changed to the following more
-[LaTeX] friendly fonts:
+Use `-k` to retain legacy LaTeX font names in titles. By default, the
+following font substitutions are automatically applied:
 
 - `\Bbb X` --> `\mathbb{X}`
 - `\scr X` --> `\mathcal{X}`
 - `\germ X` --> `\mathfrak{X}`
 
-Use `-k` to retain the original font commands. This applies both to input titles
-and to titles retrieved from AMS.
+This applies both to input titles and to titles retrieved from AMS.
 
 #### `-w LEN, --wrap LEN`
 
-Wrap bibtex fields to specified width
+Wrap [BibTeX] fields to specified width
 
-The default is `0`, which leaves field values unwrapped. A positive `LEN`
-wraps each field value to that width, with a tab before continuation lines.
-Field names, braces and indentation add to the total line length, so `LEN`
-is not a strict limit on complete output lines. Negative values are rejected.
+By default, lines are not wrapped (a wrap length of `0`). A positive
+wrap length `LEN` wraps each field value to that width, with a tab before
+continuation lines.
 
 ### Reports and logging
 
-#### `-q, --quiet, --quieter`
+#### `-q, --quiet`
 
 Print fewer messages
 
-By default, [bibupdate] prints a wrapped reference for each updated entry and
-a notice for each attempted AMS lookup that has no unique matching paper, including
-preprints. With `-q` or `--quiet` it prints brief update notices, missed
-lookups and network warnings, without separator bars or field-by-field changes.
-Missed lookups appear in red when the output is a terminal; redirected output
-and log files contain plain text. Reports wrap at 78 columns. `--quieter`
-is retained as an alias. Repeat the option (`-qq`) to suppress update notices
-and lookup warnings. Fatal errors are still reported.
-
-The `--check` option prints proposed references in the compact layout,
-including when combined with `-q` or `-qq`. Duplicate warnings follow the same
-warning levels as missed lookups. Use `-l` to send messages to a log file.
+By default, [bibupdate] prints a compact reference for each paper that
+is updated, and a warning for each paper for which the AMS lookup fails.
+With `-q` (or `--quiet`) only a one-line message is printed for updated
+papers, together with the warnings for failed lookups. With `-qq` only errors
+are printed. Failed lookups are printed in red when the output is a terminal.
 
 #### `-l LOG, --log LOG`
 
 Log output to file (defaults to stdout)
 
-By default reports and warnings go to standard output. Use `-l` to write them
-to a file instead; an existing log file is replaced. Fatal errors are also
+By default, reports and warnings go to standard output. Use `-l` to write
+them to a file. Existing log files are overwritten. Fatal errors are always
 printed to standard error.
 
 ### Help and version
 
 #### `-h, --help`
 
-Show a short list of options, grouped by task, and exit.
+Print a short list of command-line options
 
 #### `-H, --Help`
 
-Print this full description, including grouped options, defaults and known
-issues, and exit.
-
-#### `-v, --version`
-
-Print the program version and licence, and exit.
+Print the full-help message
 
 ## Known issues
 
 - **BibTeX syntax:** the parser uses regular expressions rather than a full
   BibTeX grammar. Use brace-delimited entries with one field per line and
-  braced values or simple bare words. Multiple fields on one line, quoted
+  braced values or simple words. Multiple fields on one line, quoted
   values, `#` concatenation, string-macro expansion, and
   fields containing `@` or `={...}` can be misread or omitted. Inspect the
   output carefully when using these forms. Duplicate listing and cleanup use
   a source scanner that preserves quoted and nested values, comments and macros;
   macros are not expanded for duplicate matching.
 - **Title matching:** capitalization braces and apostrophes are removed before
-  searching and comparison. Dollar-delimited mathematics is also removed,
-  which can make distinct titles look alike. Other TeX commands and accents
-  are not fully decoded, so
+  searching and comparing. Mathematics is also removed, which can make distinct
+  titles look similar. TeX commands and accents are not fully decoded, so
   equivalent spellings can still fail to match. A unique fuzzy title match is
-  a heuristic, not a guarantee that the paper is correct.
+  a heuristic, not a guarantee that a paper has been correctly identified.
 - **Author names:** [mrlookup] uses only the first author's surname. A compound
   surname is preserved in `surname, given names` form; without a comma, only
   the last word is used. Accents, name particles and alternative spellings can
   therefore affect searches.
 - **Page numbers:** numeric ranges and single numeric pages are supported.
   Article identifiers and prefixed page numbers are not handled reliably.
-  If no numeric first page is extracted, the title is used instead; for
-  non-book entries the year is then omitted from the query.
-- **Ambiguous or missing results:** an AMS entry is updated only when one
-  candidate survives title matching. No match or multiple matches leave it
-  unchanged and produce a missed-lookup notice. Entries without a usable title
-  have less protection against an incorrect match. Skipped entries, such as
-  those with an existing `mrnumber` under the default settings, are not failed
-  lookups and produce no missed-lookup notice.
+  When only non-numeric page numbers are given, the title is used
+  instead. For non-book entries the year is then omitted from the query.
+- **Ambiguous or missing results:** an AMS entry is updated only when
+  there is a unique match. [BibTeX] entries are not changed when no
+  matches, or multiple matches, are found. Entries without a usable title
+  are more likely to receive an incorrect match. By default, skipped
+  entries, such as those with an existing `mrnumber`, are never changed.
 - **arXiv searches:** searches use significant title words and examine at most
-  ten results. Titles dominated by mathematics or short words can be missed.
-  No unique title match leaves the arXiv fields unchanged; this is normally
-  silent. With `--all` or `--check`, an existing identifier can be replaced by
-  the identifier of the matching title, so review such changes.
+  ten results. Titles dominated by mathematics or short words are more
+  likely to receive false matches. As with [mrlookup] searches, the [arXiv]
+  fields for a paper are updated only if there is a unique match.
 - **Network services:** connections can fail, time out or return unexpected
   data. Requests use a 30-second timeout. Connection errors and
   timeouts produce warnings, and processing continues. A missed lookup does
@@ -456,6 +462,10 @@ The files in `tests/` contain automated checks to catch bugs after changes:
   including title braces and author names.
 - [test_duplicates.py](tests/test_duplicates.py): duplicate listing, paper removal,
   collision-free key renaming and preservation of bibliography source text.
+- [test_merge.py](tests/test_merge.py): multi-file merging, duplicate cleanup,
+  citation remapping and output backups.
+- [test_tex_citations.py](tests/test_tex_citations.py): TeX citation remapping,
+  ambiguous keys and backups during duplicate cleanup.
 - [test_threads_output.py](tests/test_threads_output.py): parallel lookups,
   output formatting, colours, and quiet/check modes.
 - [test_documentation.py](tests/test_documentation.py): documentation generation
@@ -476,17 +486,56 @@ python3 -m unittest discover -s tests -v
 The tests use simulated lookup responses, so no network access is needed.
 Documentation checks require Pandoc and latexmk to be available.
 
+## Rebuilding the documentation
+
+The built-in help in `bibupdate.py` is the source for `README.md` and the
+marked, generated regions of the manual. The title page, styling and text
+outside those regions can be edited directly.
+
+Run `python3 setup.py readme` in the source directory to refresh both sources
+and compile `bibupdate.pdf`. This requires Python, Pandoc, and `latexmk` from
+a TeX distribution. Use `--no-pdf` to refresh only the sources; `docs` is an
+alias for `readme`. BibUpdate itself remains a self-contained Python script
+with no non-standard dependencies.
+
 ## Preparing a release
 
 From a source checkout, update `bibupdate.ini`, the script's embedded
-`default_metadata` and copyright notice, and the first heading of `CHANGES.md`.
-The changelog heading must name the release version; bold headings such as
-`**v2.0** -- CTAN release` and headings such as
-`## Version 2.0.0 - 2026-11-02` are both accepted. A zero patch component may be
-omitted in the changelog. Any date in the heading must match the ini file.
-Release versions in the ini file must be `X.Y.Z`,
-without a prerelease suffix, and the copyright end year must match the release
-year. Rebuild the documentation and commit the prepared files:
+`default_metadata` and copyright notice, and the first heading of 
+`CHANGES.md`. The changelog heading must name the release version:
+
+```bash
+**v2.0** -- CTAN release
+```
+
+and headings such as
+
+```bash
+## Version 2.0.0 - 2026-11-02
+```
+
+are both accepted. A zero patch component may be omitted in the changelog. Any
+date in the heading must match the ini file. Release versions in the ini file
+must be `X.Y.Z`, without a prerelease suffix, and the copyright end year must
+match the release year. Rebuild the documentation and commit the
+prepared files using:
+
+```bash
+make_release
+usage: setup.py [-h] [-c] [-f] [-s] [-m] [-t]
+
+Check release readiness and build the CTAN archive, or run only the requested maintenance actions (-m/-t).
+
+options:
+  -h, --help        show this help message and exit
+  -c, --check-only  check release readiness without packaging
+  -f, --force       force building bibupdate.tar.gz
+  -s, --skip-tests  skip the test suite
+  -m, --manual      rebuild README.md and the manual (combine with -t)
+  -t, --tests       run the test suite (combine with -m)
+```
+
+Functionally, `make_release` is equivalent to running commands like:
 
 ```bash
 python3 setup.py readme
@@ -496,7 +545,7 @@ python3 setup.py release
 
 `./make_release` runs the same release command. It checks metadata consistency,
 the changelog, a clean Git working tree (including untracked files), generated
-documentation, PDF freshness and metadata, the LaTeX log, and all tests before
+documentation, PDF freshness and metadata, the [LaTeX] log, and all tests before
 creating `bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
 rebuilding the manual also needs latexmk and TeX. The release check does not
 change metadata or rebuild files automatically.
@@ -514,9 +563,9 @@ with `python3 setup.py release`.
 
 Use `-c` or `--check-only` to inspect readiness without creating an archive, `-s` or
 `--skip-tests` to omit the test suite, and `-f` or `--force` to building
-the tar file. Missing or changing package files still prevent an
-archive from being created. `--check-only` returns a nonzero exit status when
-any check fails, including with `--force`.
+the tar file. Missing or changed package files still prevent the tar
+file from being created. The option `--check-only` returns a nonzero exit
+status when any check fails, including with `--force`.
 
 `python3 setup.py ctan` packages the existing release files without readiness
 checks. Both commands prepare files locally; upload separately using
@@ -525,8 +574,10 @@ checks. Both commands prepare files locally; upload separately using
 ## Licence
 
 Andrew Mathas
+
 GNU General Public License, Version 3, 29 June 2007
-[bibupdate] Version 2.0.0. Copyright (C) 2014-2026
+
+[bibupdate] Version 2.0.0. Copyright (C) 2012-2026
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License ([GPL]) as published by the Free
@@ -539,11 +590,9 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 [BibTeX]: http://www.bibtex.org/
 [mrlookup]: https://mathscinet.ams.org/mathscinet/freetools/mrlookup
-[MathSciNet]: https://mathscinet.ams.org/mathscinet/freetools/mrlookup
+[MathSciNet]: https://mathscinet.ams.org/mathscinet/publications-search
 [MRef]: https://mathscinet.ams.org/mathscinet/freetools/mref
 [bibupdate]: https://github.com/AndrewMathas/BibUpdate
 [arXiv]: http://arxiv.org/
-[LaTeX]: http://en.wikipedia.org/wiki/LaTeX
-[hyperref]: http://www.ctan.org/pkg/hyperref
-[free tools]: https://mathscinet.ams.org/mathscinet/freetools
+[LaTeX]: https://latex-project.org/
 [GPL]: http://www.gnu.org/licenses/gpl.html

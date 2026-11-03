@@ -58,7 +58,7 @@ class OutputTests(unittest.TestCase):
              contextlib.redirect_stdout(log), \
              patch.object(b, "get_json", return_value=response):
             b.main()
-        for name in ["all", "arxiv", "check", "duplicates", "keep_fonts", "overwrite", "Help"]:
+        for name in ["all", "arxiv", "check", "deduplicate", "keep_fonts", "overwrite", "Help"]:
             self.assertFalse(getattr(b.options, name), name)
         self.assertEqual(b.options.lookup, "mrlookup")
         self.assertEqual(b.options.threads, 1)
@@ -95,7 +95,7 @@ class OutputTests(unittest.TestCase):
                     self.assertEqual(field + " = {Test value}" in written, field not in ignored)
 
     def test_quiet_aliases_keep_only_brief_update_notices(self):
-        for flag in ["-q", "--quiet", "--quieter"]:
+        for flag in ["-q", "--quiet"]:
             with self.subTest(flag=flag):
                 log = self.run_cli(flag)
                 self.assertTrue(log.startswith("Updated AMRW:KoszulDuality:"))
@@ -133,7 +133,7 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(self.run_cli("--threads", "2", "-qq", get_json=failed_lookup), "")
 
     def test_missing_papers_are_reported_in_normal_and_quiet_modes(self):
-        for flags in [(), ("--quiet",), ("--quieter",)]:
+        for flags in [(), ("--quiet",)]:
             with self.subTest(flags=flags):
                 log = self.run_cli("--threads", "2", *flags, get_json=lambda url: {})
                 self.assertIn("! Didn't find AMRW:KoszulDuality:", log)
@@ -276,7 +276,7 @@ class OutputTests(unittest.TestCase):
         duplicate = ORIGINAL + "\n" + ORIGINAL.replace("AMRW:KoszulDuality", "AnotherKey")
         self.input.write_text(duplicate)
         self.output.write_text("Existing output\n")
-        for flag in ["-d", "--list-duplicates"]:
+        for flag in ["--list-duplicates"]:
             with self.subTest(flag=flag), patch.object(
                 b, "lookup_entries", side_effect=AssertionError("AMS lookup attempted")
             ), patch.object(b, "arxiv_search", side_effect=AssertionError("arXiv lookup attempted")):
@@ -293,7 +293,7 @@ class OutputTests(unittest.TestCase):
     def test_duplicates_only_without_output_path_never_creates_a_file(self):
         self.input.write_text(ORIGINAL + "\n" + ORIGINAL)
         log = io.StringIO()
-        with patch.object(b.sys, "argv", ["bibupdate", "-d", str(self.input)]), \
+        with patch.object(b.sys, "argv", ["bibupdate", "--list-duplicates", str(self.input)]), \
              contextlib.redirect_stdout(log), \
              patch.object(b, "get_json", side_effect=AssertionError("Network lookup attempted")):
             b.main()
@@ -301,18 +301,18 @@ class OutputTests(unittest.TestCase):
         self.assertEqual(list(self.input.parent.iterdir()), [self.input])
 
     def test_duplicates_only_has_purple_quiet_warnings_and_silent_unique_input(self):
-        self.assertEqual(self.run_cli("-d"), "")
+        self.assertEqual(self.run_cli("--list-duplicates"), "")
         self.assertFalse(self.output.exists())
         self.input.write_text(ORIGINAL + "\n" + ORIGINAL)
-        plain = self.run_cli("-d")
-        self.assertEqual(self.run_cli("-d", "--quiet"), plain)
+        plain = self.run_cli("--list-duplicates")
+        self.assertEqual(self.run_cli("--list-duplicates", "--quiet"), plain)
         self.assertNotIn("\033[", plain)
-        self.assertIn("\033[35m! Duplicate citation key", self.run_cli("-d", terminal=True))
-        self.assertEqual(self.run_cli("-d", "-qq"), "")
+        self.assertIn("\033[35m! Duplicate citation key", self.run_cli("--list-duplicates", terminal=True))
+        self.assertEqual(self.run_cli("--list-duplicates", "-qq"), "")
 
     def test_hidden_debugging_option_remains_available_by_its_long_name(self):
         with patch.object(b.bibup, "debugging", False):
-            self.run_cli("--debugging", "-d")
+            self.run_cli("--debugging", "--list-duplicates")
             self.assertEqual(b.options.debugging, 1)
             self.assertTrue(b.options.list_duplicates)
 

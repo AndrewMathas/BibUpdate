@@ -59,7 +59,8 @@ class DocumentationTests(unittest.TestCase):
         readme = (self.directory / "README.md").read_text()
         self.assertEqual(readme, build.readme_markdown())
         self.assertTrue(readme.startswith("# bibupdate\n\n[![Version]"))
-        self.assertEqual(readme.count("https://img.shields.io/"), 3)
+        self.assertEqual(readme.count("https://img.shields.io/"), 4)
+        self.assertIn("https://img.shields.io/ctan/v/bibupdate", readme)
         self.assertIn("python3.9%2B", readme)
         self.assertIn("https://www.gnu.org/licenses/gpl-3.0.en.html", readme)
         self.assertNotIn("www.maths.usyd.edu.au/u/mathas/", readme)
@@ -75,7 +76,7 @@ class DocumentationTests(unittest.TestCase):
         self.assertNotIn("{Author}", generated)
         self.assertGreater(generated.index(r"\subsection*{Licence}"),
                            generated.index("Handwritten bug report instructions"))
-        self.assertIn("Duplicate warnings", generated)
+        self.assertIn(r"\subsubsection*{Duplicate listing}", generated)
         # Removing the generated regions from both versions leaves identical text.
         for begin, end in build.GENERATED_REGIONS:
             generated = build.replace_region(generated, begin, end, "")

@@ -146,7 +146,7 @@ class CleanupTests(unittest.TestCase):
         self.output.write_text("Keep this output\n")
         for flag, keys, papers in [("--list-keys", True, False),
                                    ("--list-papers", False, True),
-                                   ("--list-duplicates", True, True), ("-d", True, True)]:
+                                   ("--list-duplicates", True, True)]:
             with self.subTest(flag=flag):
                 log = self.run_cli(source, flag, "--arxiv", "--overwrite")
                 self.assertEqual("Duplicate citation key" in log, keys)
@@ -159,18 +159,19 @@ class CleanupTests(unittest.TestCase):
     def test_duplicate_papers_with_the_same_key_are_listed_and_removed(self):
         first, second = article("Same"), article("Same", author="P. N. Achar")
         self.assertIn("duplicate paper", self.run_cli(first + second, "--list-papers"))
-        log = self.run_cli(first + second, "--duplicate-papers")
+        log = self.run_cli(first + second, "--remove-duplicate-papers")
         self.assertEqual(self.output.read_text(), first + "\n")
         self.assertIn("Removed duplicate paper 'Same'", log)
 
-    def test_paper_removal_retains_first_fields_without_merging_or_renaming(self):
+    def test_paper_removal_keeps_first_values_and_adds_missing_fields(self):
         first = article("Repeated", title="First paper", mrreviewer="Keep me")
         different = article("Repeated", title="Different paper")
         duplicate = article("Alias", title="FIRST paper", doi="10.1234/extra")
-        log = self.run_cli(first + different + duplicate, "--duplicate-papers", "--arxiv", "-i", "title")
-        self.assertEqual(self.output.read_text(), first + different + "\n")
+        log = self.run_cli(first + different + duplicate, "--remove-duplicate-papers", "--arxiv", "-i", "title")
+        expected = article("Repeated", title="First paper", mrreviewer="Keep me", doi="10.1234/extra")
+        self.assertEqual(self.output.read_text(), expected + different + "\n")
         self.assertNotIn("Renamed", log)
-        self.assertNotIn("10.1234/extra", self.output.read_text())
+        self.assertIn("Added missing fields to 'Repeated': doi.", log)
         self.assertIn("kept 'Repeated' (line 1)", log)
 
     def test_keys_only_never_deletes_papers_and_reserves_future_keys(self):
@@ -178,7 +179,7 @@ class CleanupTests(unittest.TestCase):
         repeated = article("Original", title="Two", author="Achar, Pramod and S. Riche", year="2019")
         later = article("AcharRiche2019", title="Reserved", author="Other, B.")
         source = first + repeated + repeated + later
-        log = self.run_cli(source, "--duplicate-keys")
+        log = self.run_cli(source, "--rename-duplicate-keys")
         expected = (first + repeated.replace("{Original,", "{AcharRiche2019a,", 1)
                     + repeated.replace("{Original,", "{AcharRiche2019b,", 1) + later)
         self.assertEqual(self.output.read_text(), expected)
@@ -188,7 +189,7 @@ class CleanupTests(unittest.TestCase):
     def test_key_suffixes_continue_after_z(self):
         source = "".join(article("Key", title=str(i), author="Smith, A.", year="2020")
                          for i in range(29))
-        self.run_cli(source, "--duplicate-keys")
+        self.run_cli(source, "--rename-duplicate-keys")
         entries = list(b.source_entries(self.output.read_text()))
         self.assertEqual(entries[-1].cite_key, "Smith2020aa")
         self.assertEqual(len({entry.cite_key for entry in entries}), 29)
@@ -198,7 +199,7 @@ class CleanupTests(unittest.TestCase):
                   + article("Same", title="Second", author="", editor="García, María", year="2021")
                   + article("Same", title="Third", author="", year="2022")
                   + article("Same", title="Fourth", author=r"Garc\'ia, Maria"))
-        self.run_cli(source, "--duplicate-keys")
+        self.run_cli(source, "--rename-duplicate-keys")
         self.assertEqual([e.cite_key for e in b.source_entries(self.output.read_text())],
                          ["Same", "Garcia2021", "Anonymous2022", "Garcia"])
 
@@ -216,20 +217,20 @@ class CleanupTests(unittest.TestCase):
         duplicate = article("Second", title="A nested title with an @ sign", author="A. Smith")
         tail = '\n% End of database\n@preamble{"LaTeX preamble"}\n'
         source = preamble + retained + duplicate + tail
-        self.run_cli(source, "--duplicates", "--wrap", "15", "-i", "mrreviewer")
+        self.run_cli(source, "--deduplicate", "--wrap", "15", "-i", "mrreviewer")
         self.assertEqual(self.output.read_text(), preamble + retained + "\n" + tail)
         self.assertEqual(self.input.read_text(), source)
 
     def test_quote_in_an_existing_key_does_not_start_a_quoted_field(self):
         source = article('FeinbergLee"HomRepLKLRTypesAD')
-        self.assertEqual(self.run_cli(source, "--duplicates"), "")
+        self.assertEqual(self.run_cli(source, "--deduplicate"), "")
         self.assertEqual(self.output.read_text(), source)
 
     def test_cleanup_preserves_crlf_newlines(self):
         first, second = article("Same", title="One"), article("Same", title="Two")
         source = (first + second).replace("\n", "\r\n")
         expected = (first + second.replace("@article{Same,", "@article{Achar,", 1))
-        self.run_cli(source, "--duplicate-keys")
+        self.run_cli(source, "--rename-duplicate-keys")
         self.assertEqual(self.output.read_bytes(), expected.replace("\n", "\r\n").encode())
 
     def test_transitive_matches_keep_first_and_repair_literal_references(self):
@@ -246,9 +247,10 @@ class CleanupTests(unittest.TestCase):
   note = {Two and Three should stay unchanged here},
 }
 ''')
-        log = self.run_cli(first + middle + last + referring, "--duplicates")
+        log = self.run_cli(first + middle + last + referring, "--deduplicate")
         result = self.output.read_text()
-        self.assertTrue(result.startswith(first))
+        self.assertTrue(result.startswith(first[:-2]))
+        self.assertEqual(next(b.source_entries(result))["mrnumber"], "12345")
         self.assertNotIn("@article{Two,", result)
         self.assertNotIn("@article{Three,", result)
         self.assertIn('crossref = "One"', result)
@@ -264,25 +266,24 @@ class CleanupTests(unittest.TestCase):
         second = article("Repeated", title="Second paper", author="Smith, Alice", year="2020")
         alias = article("Removed", title="Second paper", author="A. Smith")
         reference = article("Ref", title="Third paper", crossref="Removed")
-        log = self.run_cli(first + second + alias + reference, "--duplicates")
+        log = self.run_cli(first + second + alias + reference, "--deduplicate")
         self.assertIn("@article{Smith2020,", self.output.read_text())
         self.assertIn("crossref = {Smith2020}", self.output.read_text())
         self.assertIn("kept 'Smith2020'", log)
 
     def test_no_changes_is_identical_and_cleanup_is_idempotent(self):
         source = "% Original formatting\n" + article("A") + "\n\n"
-        self.assertEqual(self.run_cli(source, "--duplicates"), "")
+        self.assertEqual(self.run_cli(source, "--deduplicate"), "")
         self.assertEqual(self.output.read_text(), source)
-        self.run_cli(article("A") + article("B") + article("A", title="Different"), "--duplicates")
+        self.run_cli(article("A") + article("B") + article("A", title="Different"), "--deduplicate")
         cleaned = self.output.read_text()
-        self.assertEqual(self.run_cli(cleaned, "--duplicates"), "")
+        self.assertEqual(self.run_cli(cleaned, "--deduplicate"), "")
         self.assertEqual(self.output.read_text(), cleaned)
 
-    def test_cleanup_aliases_and_combined_options_produce_identical_files(self):
+    def test_deduplicate_matches_combined_cleanup_options(self):
         source = article("A") + article("B") + article("A", title="Different")
         outputs = []
-        for flags in [("--duplicates",), ("--deduplicate",),
-                      ("--duplicate-papers", "--duplicate-keys"),
+        for flags in [("--deduplicate",),
                       ("--remove-duplicate-papers", "--rename-duplicate-keys")]:
             self.run_cli(source, *flags)
             outputs.append(self.output.read_text())
@@ -290,10 +291,10 @@ class CleanupTests(unittest.TestCase):
 
     def test_cleanup_writes_default_output_and_overwrite_keeps_backup(self):
         source = article("A") + article("B")
-        self.run_cli(source, "--duplicates", output=False)
+        self.run_cli(source, "--deduplicate", output=False)
         self.assertTrue((self.directory / "updated_papers.bib").is_file())
         self.assertEqual(self.input.read_text(), source)
-        self.run_cli(source, "--duplicates", "--overwrite")
+        self.run_cli(source, "--deduplicate", "--overwrite")
         self.assertEqual(self.input.with_suffix(".bib.bak").read_text(), source)
         self.assertNotIn("@article{B,", self.input.read_text())
 
@@ -301,14 +302,110 @@ class CleanupTests(unittest.TestCase):
         source = article("A") + '@article{B,\n title = {Unclosed}\n'
         self.output.write_text("Existing output")
         with contextlib.redirect_stderr(io.StringIO()) as errors, self.assertRaises(SystemExit):
-            self.run_cli(source, "--duplicates", "--overwrite")
+            self.run_cli(source, "--deduplicate", "--overwrite")
         self.assertIn("unclosed", errors.getvalue())
         self.assertEqual(self.input.read_text(), source)
         self.assertEqual(self.output.read_text(), "Existing output")
         self.assertEqual(len(list(self.directory.iterdir())), 2)
 
+    def test_missing_fields_accumulate_in_file_order_and_empty_values_are_kept(self):
+        first = article("First", note="", title="The first title", doi="10.1234/same")
+        second = article("Second", title="Later title", doi="10.1234/same",
+                         note="Do not replace empty", journal="First supplied journal", year="2020")
+        third = article("Third", title="Third title", doi="10.1234/same",
+                        journal="Later journal", year="2021", eprint="2001.12345")
+        self.run_cli(first + second + third, "--deduplicate")
+        result = self.output.read_text()
+        entries = list(b.source_entries(result))
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].cite_key, "First")
+        for name, expected in [("title", "The first title"), ("note", ""),
+                               ("journal", "First supplied journal"), ("year", "2020"),
+                               ("eprint", "2001.12345")]:
+            self.assertEqual(entries[0][name], expected, name)
+        self.run_cli(result, "--deduplicate")
+        self.assertEqual(self.output.read_text(), result)
+
+    def test_macro_fields_count_as_present_and_missing_expressions_are_copied_raw(self):
+        first = ('@article{First, title={Paper}, author={Smith, A.}, '
+                 'JOURNAL = original # " Supplement", note={}\n}\n')
+        second = r'''@article{Second,
+  title = {Paper},
+  author = {A. Smith},
+  journal = {Do not overwrite the macro},
+  note = {Do not overwrite empty},
+  publisher = publisherMacro # " Press",
+  howpublished = "Journal, Series {A}",
+  custom-field = {Nested {data}, with @ and 50%},
+  year = 2020
+}
+'''
+        self.run_cli(first + second, "--deduplicate")
+        result = self.output.read_text()
+        self.assertIn('JOURNAL = original # " Supplement", note={},', result)
+        self.assertIn('publisher = publisherMacro # " Press",', result)
+        self.assertIn('howpublished = "Journal, Series {A}",', result)
+        self.assertIn('custom-field = {Nested {data}, with @ and 50%},', result)
+        self.assertIn('year = 2020,', result)
+        self.assertNotIn("Do not overwrite", result)
+        self.assertEqual(next(b.source_entries(result))["year"], "2020")
+
+    def test_insertion_handles_closing_styles_and_last_field_comments(self):
+        examples = [
+            '@article{First,title={Paper},author={Smith, A.}}',
+            '@article(First,title="Paper",author="Smith, A.")',
+            '@article{First,\n\ttitle={Paper},\n\tauthor={Smith, A.}\n  }',
+            '@article{First,\n title={Paper},\n author={Smith, A.} % original comment\n}',
+            '@article{First,\n title={Paper},\n author={Smith, A.}, % original comment\n}',
+        ]
+        for first in examples:
+            with self.subTest(first=first):
+                second = article("Second", title="Paper", author="A. Smith", year="2020")
+                self.run_cli(first + "\n" + second, "--deduplicate")
+                result = self.output.read_text()
+                entry = next(b.source_entries(result))
+                self.assertEqual(entry["author"], "Smith, A.")
+                self.assertEqual(entry["year"], "2020")
+                self.assertEqual(entry.cite_key, "First")
+                if "original comment" in first:
+                    self.assertIn("% original comment\n", result)
+                self.run_cli(result, "--deduplicate")
+                self.assertEqual(self.output.read_text(), result)
+
+    def test_internal_macro_comments_and_trailing_comments_do_not_hide_fields(self):
+        first = article("First", title="Paper", author="A. Smith")
+        second = '''@article{Second,
+ title={Paper}, author={Smith, A.},
+ publisher = nameMacro % keep internal comment
+     # " Press", % trailing comment
+ crossref = "ParentAlias" % final comment
+}
+'''
+        parents = article("Parent", title="Parent paper") + article("ParentAlias", title="Parent paper")
+        self.run_cli(first + second + parents, "--deduplicate")
+        result = self.output.read_text()
+        self.assertIn('publisher = nameMacro % keep internal comment\n     # " Press",', result)
+        self.assertIn('crossref = "Parent",', result)
+        self.assertEqual(next(b.source_entries(result))["crossref"], "Parent")
+
+    def test_added_fields_preserve_crlf_and_first_entry_indentation(self):
+        first = article("First").replace("  ", "\t").replace("\n", "\r\n")
+        second = article("Second", year="2020").replace("\n", "\r\n")
+        self.run_cli(first + second, "--deduplicate")
+        expected = first[:-3] + "\tyear = {2020},\r\n}\r\n\r\n"
+        self.assertEqual(self.output.read_bytes(), expected.encode())
+
+    def test_rename_keys_only_does_not_merge_fields_or_remove_identical_papers(self):
+        source = article("Same") + article("Same", year="2020", note="Later copy")
+        self.run_cli(source, "--rename-duplicate-keys")
+        entries = list(b.source_entries(self.output.read_text()))
+        self.assertEqual(len(entries), 2)
+        self.assertNotIn("year", entries[0])
+        self.assertNotIn("note", entries[0])
+        self.assertEqual(entries[1]["year"], "2020")
+
     def test_cleanup_rejects_listing_and_check_combinations(self):
-        for flags in [("--duplicates", "--list-keys"), ("--duplicate-keys", "--check")]:
+        for flags in [("--deduplicate", "--list-keys"), ("--rename-duplicate-keys", "--check")]:
             with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()), \
                  self.assertRaises(SystemExit):
                 self.run_cli(article("A"), *flags)

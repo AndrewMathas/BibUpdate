@@ -1,13 +1,31 @@
-## Version 2.0 - November 2026 (CTAN release)
+[![Version](https://img.shields.io/badge/version-2.0.0-success)](https://github.com/AndrewMathas/BibUpdate)
+[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)
+[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
+[![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+
+# **BibUpdate** - Change log
+
+## Version 2.1.0 - November 2026
+
+- Adds `--merge` option for merging BibTeX files
+- Adds missing fields from later copies when deduplicating or merging papers
+- Adds `--output` option for specifying the output file
+- Adds `--texfile` option for updating citations in LaTeX files when fixing duplicates or merging
+- Improves exposition in manual
+
+## Version 2.0.0 - November 2026 (initial CTAN release)
 
 - Adds `--check-only`, `--skip-tests` and `--force` to the release command
 - Adds `--threads` for ordered concurrent AMS lookups; arXiv lookups remain sequential
-- Adds `-X`/`--arxiv` lookups and `-n`/`--mref` support
+- Adds `-x`/`--arxiv` lookups and `-n`/`--mref` support
 - Adds `make_release -m` and `-t` to rebuild documentation and run tests separately
 - Forces manual recompilation on every `make_release -m` run
 - Adds missing fields even when existing fields are unchanged
 - Adds network timeouts and continues processing after failed lookups
 - Adds offline duplicate paper removal and collision-free key renaming
+- Adds `--merge` to combine bibliography files and clean up duplicates
+- Adds `--output` to select the bibliography output filename
+- Adds `-t`/`--texfile` to update TeX citations during cleanup, with `.bak` backups
 - Adds release checks for metadata, documentation, Git status and tests
 - Adds separate commands to list duplicate papers and citation keys
 - Builds the CTAN archive and upload metadata with `setup.py ctan`
@@ -20,7 +38,6 @@
 - Highlights duplicate warnings in purple and missed lookups in red
 - Keeps the hidden debugging option available as `--debugging`
 - Omits trailing Markdown link definitions from full terminal help
-- Streamlined code using ChatGPT
 - Ports the script to Python 3 and uses standard-library fuzzy title matching
 - Preserves handwritten manual text and indents option descriptions
 - Preserves retained entries and repairs local references during duplicate cleanup
@@ -32,8 +49,9 @@
 - Supports running without `bibupdate.ini` using embedded metadata
 - Updates AMS lookups to use the current JSON APIs
 - Updates documented defaults and known issues
+- Uses ChatGPT to streamline code
 - Uses Markdown for the README and changelog
-- Uses `--duplicates` for cleanup and `-d`/`--list-duplicates` for listing
+- Uses `--deduplicate` for cleanup and `--list-duplicates` for listing
 
 ## Version 1.3
 

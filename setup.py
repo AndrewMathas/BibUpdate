@@ -53,7 +53,7 @@ summary={description}
 directory=/biblio/bibtex/utils/bibupdate
 DoNotAnnounce=0
 announce={description}
-notes=Requires Python 3. Please install bibupdate.py as the command bibupdate (bibupdate.exe on Windows), keeping bibupdate.ini alongside the Python script.
+notes=Requires Python 3.9 or later. Please install bibupdate.py as the command bibupdate (bibupdate.exe on Windows), keeping bibupdate.ini alongside the Python script.
 license=free
 freeversion=gpl
 file=bibupdate.tar.gz
@@ -74,10 +74,15 @@ def replace_region(source, begin, end, content):
 
 
 def readme_markdown():
-    """Add web badges and testing notes to the README."""
+    """Add web badges and testing notes to the README.
+
+    The badges and the testing, rebuilding and release notes appear only in the
+    README, not in the manual or in the output of ``bibupdate -H``.
+    """
     version = quote(bibupdate.bibup.version.replace("-", "--"), safe="")
     badges = (
         "[![Version](https://img.shields.io/badge/version-%s-success)](%s)\n"
+        "[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)"
         "[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%%2B-important)](https://www.python.org/)\n"
         "[![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)"
     ) % (version, bibupdate.bibup.url)
@@ -89,6 +94,10 @@ The files in `tests/` contain automated checks to catch bugs after changes:
   including title braces and author names.
 - [test_duplicates.py](tests/test_duplicates.py): duplicate listing, paper removal,
   collision-free key renaming and preservation of bibliography source text.
+- [test_merge.py](tests/test_merge.py): multi-file merging, duplicate cleanup,
+  citation remapping and output backups.
+- [test_tex_citations.py](tests/test_tex_citations.py): TeX citation remapping,
+  ambiguous keys and backups during duplicate cleanup.
 - [test_threads_output.py](tests/test_threads_output.py): parallel lookups,
   output formatting, colours, and quiet/check modes.
 - [test_documentation.py](tests/test_documentation.py): documentation generation
@@ -109,17 +118,56 @@ python3 -m unittest discover -s tests -v
 The tests use simulated lookup responses, so no network access is needed.
 Documentation checks require Pandoc and latexmk to be available.
 
+## Rebuilding the documentation
+
+The built-in help in `bibupdate.py` is the source for `README.md` and the
+marked, generated regions of the manual. The title page, styling and text
+outside those regions can be edited directly.
+
+Run `python3 setup.py readme` in the source directory to refresh both sources
+and compile `bibupdate.pdf`. This requires Python, Pandoc, and `latexmk` from
+a TeX distribution. Use `--no-pdf` to refresh only the sources; `docs` is an
+alias for `readme`. BibUpdate itself remains a self-contained Python script
+with no non-standard dependencies.
+
 ## Preparing a release
 
 From a source checkout, update `bibupdate.ini`, the script's embedded
-`default_metadata` and copyright notice, and the first heading of `CHANGES.md`.
-The changelog heading must name the release version; bold headings such as
-`**v2.0** -- CTAN release` and headings such as
-`## Version 2.0.0 - 2026-11-02` are both accepted. A zero patch component may be
-omitted in the changelog. Any date in the heading must match the ini file.
-Release versions in the ini file must be `X.Y.Z`,
-without a prerelease suffix, and the copyright end year must match the release
-year. Rebuild the documentation and commit the prepared files:
+`default_metadata` and copyright notice, and the first heading of 
+`CHANGES.md`. The changelog heading must name the release version:
+
+```bash
+**v2.0** -- CTAN release
+```
+
+and headings such as
+
+```bash
+## Version 2.0.0 - 2026-11-02
+```
+
+are both accepted. A zero patch component may be omitted in the changelog. Any
+date in the heading must match the ini file. Release versions in the ini file
+must be `X.Y.Z`, without a prerelease suffix, and the copyright end year must
+match the release year. Rebuild the documentation and commit the
+prepared files using:
+
+```bash
+make_release
+usage: setup.py [-h] [-c] [-f] [-s] [-m] [-t]
+
+Check release readiness and build the CTAN archive, or run only the requested maintenance actions (-m/-t).
+
+options:
+  -h, --help        show this help message and exit
+  -c, --check-only  check release readiness without packaging
+  -f, --force       force building bibupdate.tar.gz
+  -s, --skip-tests  skip the test suite
+  -m, --manual      rebuild README.md and the manual (combine with -t)
+  -t, --tests       run the test suite (combine with -m)
+```
+
+Functionally, `make_release` is equivalent to running commands like:
 
 ```bash
 python3 setup.py readme
@@ -129,7 +177,7 @@ python3 setup.py release
 
 `./make_release` runs the same release command. It checks metadata consistency,
 the changelog, a clean Git working tree (including untracked files), generated
-documentation, PDF freshness and metadata, the LaTeX log, and all tests before
+documentation, PDF freshness and metadata, the [LaTeX] log, and all tests before
 creating `bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
 rebuilding the manual also needs latexmk and TeX. The release check does not
 change metadata or rebuild files automatically.
@@ -147,9 +195,9 @@ with `python3 setup.py release`.
 
 Use `-c` or `--check-only` to inspect readiness without creating an archive, `-s` or
 `--skip-tests` to omit the test suite, and `-f` or `--force` to building
-the tar file. Missing or changing package files still prevent an
-archive from being created. `--check-only` returns a nonzero exit status when
-any check fails, including with `--force`.
+the tar file. Missing or changed package files still prevent the tar
+file from being created. The option `--check-only` returns a nonzero exit
+status when any check fails, including with `--force`.
 
 `python3 setup.py ctan` packages the existing release files without readiness
 checks. Both commands prepare files locally; upload separately using
@@ -234,7 +282,7 @@ def build_documentation(directory=ROOT, make_pdf=True):
             capture_output=True,
             check=True,
         ).stdout
-        return (
+        result = (
             result.replace(r"\paragraph*", r"\BibUpdateOptionHeading*")
             .replace(
                 r"\begin{verbatim}",
@@ -242,10 +290,17 @@ def build_documentation(directory=ROOT, make_pdf=True):
             )
             .replace(r"\end{verbatim}", r"\end{Verbatim}")
         )
+        # Keep each compact option-group label with its following listing.
+        return re.sub(
+            r"(\\textbf\{[^{}\n]+\}\n\n)(?=\\begin\{Verbatim\})",
+            r"\\Needspace{4\\baselineskip}\n\1",
+            result,
+        )
 
     body = latex_fragment(blocks[:licence_start])
     licence = latex_fragment(blocks[licence_start:])
     preamble = r"""\usepackage[T1]{fontenc}
+\usepackage{needspace}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \makeatletter
 \newcommand{\BibUpdateOptionHeading}{\@startsection{paragraph}{4}{0pt}
@@ -359,9 +414,7 @@ def build_ctan_package(directory=ROOT):
         configuration.write_text(ctan_specs.format(**metadata), encoding="utf-8")
         archive.replace(directory / archive.name)
         configuration.replace(directory / configuration.name)
-    release_report(
-        "success", "Created bibupdate.tar.gz and bibupdate.ctan", color_text=True
-    )
+    release_report("success", "Created bibupdate.tar.gz and bibupdate.ctan")
     print("To upload to ctan run: ctanupload -F bibupdate.ctan")
 
 
@@ -412,7 +465,7 @@ def check_release(directory=ROOT, skip_tests=False):
             release_report("failure", "%s: %s" % (label, message))
         else:
             message = label + (": " + str(detail) if detail else "")
-            release_report("success", message, color_text=bool(detail))
+            release_report("success", message)
 
     def require(condition, message):
         if not condition:
@@ -511,10 +564,17 @@ def check_release(directory=ROOT, skip_tests=False):
     def check_changes():
         require(release_date is not None, "a valid release date is needed")
         source = (directory / "CHANGES.md").read_text(encoding="utf-8")
-        first = next((line.strip() for line in source.splitlines() if line.strip()), "")
-        match = re.search(
-            r"\bv?(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)(?=\s|\*|$)", first, re.I
+        version_heading = re.compile(
+            r"^(?:#{1,6}\s+)?(?:\*\*)?(?:Version\s+|v)?"
+            r"(\d+\.\d+(?:\.\d+)?(?:-[\w.]+)?)(?=\s|\*|$)",
+            re.I,
         )
+        first, match = "", None
+        for line in source.splitlines():
+            match = version_heading.match(line.strip())
+            if match is not None:
+                first = line.strip()
+                break
 
         def normalized(value):
             number, separator, suffix = value.partition("-")
@@ -524,7 +584,9 @@ def check_release(directory=ROOT, skip_tests=False):
 
         require(
             match is not None and normalized(match.group(1)) == normalized(version),
-            "first changelog heading must name version " + version,
+            "first changelog version heading must name version "
+            + version
+            + (" (found %s)" % match.group(1) if match is not None else ""),
         )
         date = re.search(r"\b\d{4}-\d{2}-\d{2}\b", first)
         if date:
@@ -666,7 +728,7 @@ def release(directory=ROOT, check_only=False, force=False, skip_tests=False):
     if failures and not force:
         release_report(
             "failure",
-            "Archive not created. Resolve the failures or explicitly use --force.",
+            "Tar file not created. Resolve the failures or use --force.",
         )
         return False
     if failures:
@@ -742,11 +804,10 @@ def main():
             if args.manual or args.tests:
                 if args.manual:
                     build_documentation()
-                    release_report("success", "Documentation rebuilt.", color_text=True)
+                    release_report("success", "Documentation rebuilt.")
                 if args.tests:
-                    release_report(
-                        "success", "Test suite: " + run_tests(), color_text=True
-                    )
+                    release_report("success", "Test suite: " + run_tests())
+                    release_report("success", "All tests passed.", color_text=True)
                 return
             ready = release(
                 check_only=args.check_only, force=args.force, skip_tests=args.skip_tests
@@ -789,13 +850,14 @@ def main():
             long_description=readme_markdown(),
             long_description_content_type="text/markdown",
             py_modules=["bibupdate"],
+            python_requires=">=3.9",
             classifiers=[
                 "Development Status :: 5 - Production/Stable",
                 "Environment :: Console",
                 "Intended Audience :: Science/Research",
                 "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
                 "Natural Language :: English",
-                "Programming Language :: Python :: 3.7",
+                "Programming Language :: Python :: 3.9",
                 "Topic :: Text Processing",
                 "Topic :: Text Processing :: Markup :: LaTeX",
                 "Topic :: Utilities",

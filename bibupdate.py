@@ -18,7 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-See https://github.com/AndrewAtLarge/BibUpdate for more details
+See https://github.com/AndrewMathas/BibUpdate for more details
 about the bibupdate program.
 
 Andrew Mathas andrew.mathas@gmail.com
@@ -34,6 +34,7 @@ import os
 import re
 import shutil
 import sys
+import tempfile
 import textwrap
 import threading
 import time
@@ -54,8 +55,8 @@ import xml.etree.ElementTree as ET
 default_metadata = {
     "author": "Andrew Mathas",
     "author_email": "andrew.mathas@gmail.com",
-    "copyright": "2014-2026",  # @bump@
-    "description": "Automatically update the entries in a bibtex file",
+    "copyright": "2012-2026",  # @bump@
+    "description": "Automatically update bibtex files",
     "keywords": "bibtex, mrlookup, MathSciNet, latex",
     "license": "GNU General Public License, Version 3, 29 June 2007",
     "name": "Andrew Mathas",
@@ -107,7 +108,11 @@ def CleanExceptHook(type, value, tb):
     Exit cleanly when program is killed, or jump into pdb if debugging
     """
     if type == KeyboardInterrupt:
-        bib_error("program killed. Exiting...")
+        if "options" in globals():
+            bib_error("program killed. Exiting...")
+        else:  # interrupted before the command line was processed
+            sys.stderr.write("%s error: program killed. Exiting...\n" % bibup.program)
+            sys.exit(2)
     elif (
         not bibup.debugging
         or hasattr(sys, "ps1")
@@ -196,7 +201,9 @@ def bib_print(*args):
             if options.log.isatty():
                 if a.startswith("! Didn't find "):
                     a = "\033[31m" + a + "\033[0m"
-                elif a.startswith(("! Duplicate ", "! Possible duplicate ")):
+                elif a.startswith(
+                    ("! Duplicate ", "! Possible duplicate ", "! Ambiguous citation ")
+                ):
                     a = "\033[35m" + a + "\033[0m"
             options.log.write(a + "\n")
 
@@ -223,7 +230,7 @@ def bib_error(*args):
 # Cloudflare, which returns a 403 to the default Python-urllib User-Agent, so we
 # present our own User-Agent string when calling them.
 ams_api = "https://mathscinet.ams.org/mathscinet/api"
-user_agent = "bibupdate (https://github.com/AndrewAtLarge/BibUpdate)"
+user_agent = "bibupdate (https://github.com/AndrewMathas/BibUpdate)"
 url_timeout = 30  # seconds to wait for a response before giving up on a request
 
 
@@ -241,7 +248,7 @@ def get_url(url):
         page = lookup.read().decode("utf-8", "replace")
         lookup.close()  # close the url feed
         return page
-    except (IOError, OSError) as err:
+    except OSError as err:
         bibup.warning("! unable to connect to %s (%s)" % (url, err))
         return None
 
@@ -375,7 +382,7 @@ bibtex_pub_types = [
 
 # need to massage some of the font specifications returned by mrlookup to "standard" latex fonts.
 fonts_to_replace = {"Bbb": "mathbb", "scr": "mathcal", "germ": "mathfrak"}
-# a factory regular expression to replace expressions like \scr C and \scr{ Cat} in one hit
+# a regular expression to replace expressions like \scr C and \scr{ Cat} in one hit
 font_replacer = re.compile(
     r"\\(%s)\s*(?:(\w)|\{([\s\w]*)\})"
     % "|".join("%s" % f for f in fonts_to_replace.keys())
@@ -389,9 +396,9 @@ def replace_fonts(string):
 
     Currently::
 
-        - \Bbb X   and \BBb {X*}  --> \mathbb{X*}
-        - \scr X*  and \scr {X*}  --> \mathcal{X*}
-        - \germ X* and \germ{X*}  --> \mathfrak{X*}
+        - \Bbb X  and \Bbb {X*}  -->  \mathbb{X*}
+        - \scr X  and \scr {X*}  -->  \mathcal{X*}
+        - \germ X and \germ{X*}  -->  \mathfrak{X*}
     """
     return font_replacer.sub(
         lambda match: (
@@ -405,7 +412,7 @@ def replace_fonts(string):
 # overkill for "type checking" of the wrap length command line option
 class NonnegativeIntegers(list):
     r"""
-    A class that gives an easy test for positive integers::
+    A class that gives an easy test for non-negative integers::
 
         >>> 1 in NonnegativeIntegers()
         True
@@ -414,7 +421,7 @@ class NonnegativeIntegers(list):
     """
 
     def __str__(self):
-        return "positive integers"
+        return "non-negative integers"
 
     def __contains__(self, x):
         r"""
@@ -434,13 +441,11 @@ class Bibtex(OrderedDict):
 
     The class contains mrlookup() and mathscinet() methods that attempt to
     update the bibtex entry by searching on the corresponding AMS databases for
-    the paper. If successful this overwrite all of the existing bibtex fields,
+    the paper. If successful this overwrites all of the existing bibtex fields,
     except for the cite key. Any entries not in MathSciNet are retained.
 
-    Most of he hard work is done by a cunning use of regular expressions to
-    extract the data from the bibtex file and from mrlookup and
-    mathscient...perhaps we should be using pyquery or beautiful soup for the
-    latter, but these regular expressions are certainly effective.
+    Most of the hard work is done by a cunning use of regular expressions to
+    extract the data from the bibtex file and from mrlookup and mathscinet.
     """
 
     # A regular expression to extract a bibtex entry from a string. We assume that
@@ -473,8 +478,6 @@ class Bibtex(OrderedDict):
     def __init__(self, bib_string):
         """
         Given a string <bib_string> that contains a bibtex entry return the corresponding Bibtex class.
-
-        EXAMPLE:
         """
         super(Bibtex, self).__init__()  # initialise as an OrderedDict
         self.updated = False
@@ -527,7 +530,7 @@ class Bibtex(OrderedDict):
 
     def __getitem__(self, key, default=""):
         """
-        We override `__getitem__` so that `self[key]` returns `default` if the `self[key]`
+        We override `__getitem__` so that `self[key]` returns `default` if `key`
         does not exist.
         """
         try:
@@ -659,7 +662,7 @@ class Bibtex(OrderedDict):
         the given year with the right page numbers. Most of the work here is in
         finding the correct search parameters.
         """
-        # only check mrlookup for books or articles for which we don't already have an mrnumber field
+        # only check mrlookup for books, articles, ... for which we don't already have an mrnumber field
         if not options.all and (
             "mrnumber" in self
             or self.pub_type not in ["book", "article", "inproceedings", "incollection"]
@@ -892,21 +895,25 @@ def duplicate_warnings(entries, keys=True, papers=True):
         yield wrap_report("! %s: %s." % (label, locations))
 
 
-def source_boundaries(source, start, closing, quotes=True, key=False):
+def source_boundaries(
+    source, start, closing, quotes=True, key=False, content_ends=None, comments=True
+):
     """Yield top-level commas and the closing delimiter, respecting nesting."""
     depth, quoted, escaped = 0, False, False
-    index = start
+    index = content_end = start
     while index < len(source):
         char = source[index]
         if escaped:
             escaped = False
         elif char == "\\":
             escaped = True
-        elif char == "%" and depth == 0 and not quoted:
+        elif char == "%" and comments and depth == 0 and not quoted:
             newline = source.find("\n", index)
             index = len(source) if newline < 0 else newline
             continue
         elif char == closing and depth == 0 and not quoted:
+            if content_ends is not None:
+                content_ends.append(content_end)
             yield index
             return
         elif char == '"' and depth == 0 and quotes and not key:
@@ -916,8 +923,12 @@ def source_boundaries(source, start, closing, quotes=True, key=False):
         elif char == "}" and depth:
             depth -= 1
         elif char == "," and depth == 0 and not quoted:
+            if content_ends is not None:
+                content_ends.append(content_end)
             yield index
             key = False
+        if not char.isspace():
+            content_end = index + 1
         index += 1
     raise ValueError(
         "unclosed BibTeX entry or field near line %d"
@@ -942,6 +953,7 @@ def source_entries(source):
         if match.group(1) is None:  # a comment outside an entry
             continue
         kind = match.group(1).lower()
+        content_ends = []
         boundaries = list(
             source_boundaries(
                 source,
@@ -949,6 +961,7 @@ def source_entries(source):
                 "}" if match.group(2) == "{" else ")",
                 quotes=kind != "comment",
                 key=kind not in ("comment", "string", "preamble"),
+                content_ends=content_ends,
             )
         )
         end = boundaries[-1]
@@ -973,21 +986,27 @@ def source_entries(source):
             - len(source[match.end() : key_end].lstrip())
         )
         entry.key_end = entry.key_start + len(key)
-        entry.field_spans = {}
+        entry.field_spans, entry.field_sources = {}, {}
+        entry.append_at = content_ends[-1]
         start = key_end + 1
-        for boundary in boundaries[1:]:
+        for boundary, value_end in zip(boundaries[1:], content_ends[1:]):
             field = re.fullmatch(
                 r"(?:\s|%[^\n]*(?:\n|$))*([A-Za-z][\w-]*)\s*=\s*(.*?)\s*",
-                source[start:boundary],
+                source[start:value_end],
                 re.DOTALL,
             )
             if field:
                 name, value = field.group(1).lower(), field.group(2)
+                entry.field_sources[name] = source[start + field.start(1) : value_end]
                 offset = start + field.start(2)
                 literal = None
                 if value.startswith("{"):
                     if (
-                        list(source_boundaries(value, 1, "}", quotes=False))[-1]
+                        list(
+                            source_boundaries(
+                                value, 1, "}", quotes=False, comments=False
+                            )
+                        )[-1]
                         == len(value) - 1
                     ):
                         literal, offset = value[1:-1], offset + 1
@@ -1019,12 +1038,118 @@ def author_key(entry):
     return ("".join(surnames) or "Anonymous") + (year.group() if year else "")
 
 
+def entry_location(entry):
+    """Describe an entry's original location, including its file when merging."""
+    location = "line %d" % entry.source_line
+    if hasattr(entry, "source_file"):
+        location = "'%s', %s" % (entry.source_file, location)
+    return location
+
+
+def merge_sources(filenames, first_file):
+    """Validate each input separately and combine source spans in file order."""
+    source, entries = "", []
+    for index, filename in enumerate(filenames):
+        try:
+            stream = first_file if index == 0 else open(filename, "r", newline="")
+            with stream:
+                if index == 0 and hasattr(stream, "reconfigure"):
+                    stream.reconfigure(newline="")
+                contents = stream.read()
+            following = list(source_entries(contents))
+        except (OSError, ValueError) as error:
+            raise ValueError("%s: %s" % (filename, error)) from error
+        if source and not source.endswith("\n"):
+            source += "\n"
+        offset = len(source)
+        for entry in following:
+            entry.source_file = filename
+            for name in (
+                "source_start",
+                "source_end",
+                "key_start",
+                "key_end",
+                "append_at",
+            ):
+                setattr(entry, name, getattr(entry, name) + offset)
+            entry.field_spans = {
+                name: (start + offset, end + offset)
+                for name, (start, end) in entry.field_spans.items()
+            }
+        entries.extend(following)
+        source += contents
+    return source, entries
+
+
+def validate_merge_output(filenames, output):
+    """Prevent the output's backup from overwriting an input bibliography."""
+    inputs = {os.path.realpath(filename) for filename in filenames}
+
+    def is_input(path):
+        return os.path.realpath(path) in inputs or (
+            os.path.exists(path)
+            and any(os.path.samefile(path, filename) for filename in filenames)
+        )
+
+    if is_input(output + ".bak"):
+        raise ValueError(
+            "output backup overlaps an input bibliography: %s.bak" % output
+        )
+    if is_input(output) and not options.overwrite and options.outputfile is None:
+        raise ValueError(
+            "default merge output is an input; choose --output or --overwrite"
+        )
+
+
+def merge_missing_fields(source, retained, later):
+    """Copy absent field expressions, keeping existing values and source text."""
+    fields = []
+    for entry in later:
+        for name, raw in entry.field_sources.items():
+            if name in retained.field_sources:
+                continue
+            retained.field_sources[name] = raw
+            if name in entry:
+                retained[name] = entry[name]
+            fields.append(name)
+    if not fields:
+        return [], []
+
+    closing = retained.source_end - 1
+    line_start = source.rfind("\n", retained.source_start, closing) + 1
+    insertion = line_start if not source[line_start:closing].strip() else closing
+    original = source[retained.source_start : retained.source_end]
+    newline = "\r\n" if "\r\n" in original else "\n"
+    indentation = re.search(r"\n([ \t]+)[A-Za-z][\w-]*\s*=", original)
+    indent = indentation.group(1) if indentation else "  "
+    prefix = "" if source[insertion - 1 : insertion] == "\n" else newline
+    changes = []
+    if source[retained.append_at - 1] != ",":
+        if retained.append_at == insertion:
+            prefix = "," + prefix
+        else:
+            changes.append((retained.append_at, retained.append_at, ","))
+    addition = (
+        prefix
+        + newline.join(indent + retained.field_sources[name] + "," for name in fields)
+        + newline
+    )
+    changes.append((insertion, insertion, addition))
+    return changes, fields
+
+
 def cleanup_duplicates(source, entries, papers=False, keys=False):
     """Edit only removed entries, repeated keys and unambiguous local references."""
+    original_keys = {entry.source_start: entry.cite_key for entry in entries}
     removed, changes, messages, removed_pairs = set(), [], [], []
+    filled = []
     paper_groups = duplicate_groups(entries)[1] if papers else []
     for group, reasons in paper_groups:
         retained = group[0]
+        additions, fields = merge_missing_fields(source, retained, group[1:])
+        changes.extend(additions)
+        if fields:
+            filled.append((retained, fields))
         for entry in group[1:]:
             removed.add(entry.source_start)
             changes.append((entry.source_start, entry.source_end, ""))
@@ -1046,21 +1171,43 @@ def cleanup_duplicates(source, entries, papers=False, keys=False):
                 reserved.add(candidate)
                 changes.append((entry.key_start, entry.key_end, candidate))
                 messages.append(
-                    "Renamed duplicate key '%s' (line %d) to '%s'."
-                    % (entry.cite_key, entry.source_line, candidate)
+                    "Renamed duplicate key '%s' (%s) to '%s'."
+                    % (entry.cite_key, entry_location(entry), candidate)
                 )
                 entry.cite_key = candidate
             seen.add(entry.cite_key)
 
-    # Preserve references to removed aliases inside the .bib file. Repeated
-    # original keys continue to refer to their first surviving occurrence.
-    aliases, live_keys = {}, {entry.cite_key for entry in survivors}
-    for group, reasons in paper_groups:
-        retained = group[0]
-        for entry in group:
-            if entry.source_start in removed and entry.cite_key not in live_keys:
-                aliases.setdefault(entry.cite_key, retained.cite_key)
-    for entry in survivors:
+    # Follow every original occurrence to its final survivor. A shared old key
+    # can refer to several different papers, so only one-target mappings are safe.
+    retained_by_start = {entry.source_start: entry for entry in survivors}
+    retained_by_start.update(
+        (entry.source_start, retained) for entry, retained in removed_pairs
+    )
+    targets = {}
+    for entry in entries:
+        retained = retained_by_start[entry.source_start]
+        targets.setdefault(original_keys[entry.source_start], {})[
+            retained.source_start
+        ] = retained.cite_key
+    ambiguous = {
+        key: sorted(set(values.values()))
+        for key, values in targets.items()
+        if len(values) > 1
+    }
+    aliases = {
+        key: next(iter(values.values()))
+        for key, values in targets.items()
+        if len(values) == 1 and key not in values.values()
+    }
+    messages.extend(
+        "Added missing fields to '%s': %s." % (entry.cite_key, ", ".join(fields))
+        for entry, fields in filled
+    )
+    for start, end, replacement in sorted(changes, reverse=True):
+        source = source[:start] + replacement + source[end:]
+    # Re-read spans after insertion so imported references are remapped too.
+    changes = []
+    for entry in source_entries(source):
         for name in ("crossref", "xref", "related", "entryset", "xdata"):
             if name not in entry.field_spans:
                 continue
@@ -1076,13 +1223,283 @@ def cleanup_duplicates(source, entries, papers=False, keys=False):
                     % (name, entry.cite_key, value, updated)
                 )
     messages = [
-        "Removed duplicate paper '%s' (line %d); kept '%s' (line %d)."
-        % (entry.cite_key, entry.source_line, retained.cite_key, retained.source_line)
+        "Removed duplicate paper '%s' (%s); kept '%s' (%s)."
+        % (
+            entry.cite_key,
+            entry_location(entry),
+            retained.cite_key,
+            entry_location(retained),
+        )
         for entry, retained in removed_pairs
     ] + messages
     for start, end, replacement in sorted(changes, reverse=True):
         source = source[:start] + replacement + source[end:]
-    return source, messages
+    return source, messages, aliases, ambiguous
+
+
+def tex_file_arguments(arguments, parser):
+    """Keep .bib positionals out of argparse's variable-length -t lists."""
+    result, index = [], 0
+    while index < len(arguments):
+        argument = arguments[index]
+        index += 1
+        flag, separator, attached = argument.partition("=")
+        if flag not in ("-t", "--texfile"):
+            result.append(argument)
+            if argument == "--":
+                result.extend(arguments[index:])
+                break
+            continue
+        filenames = [attached] if separator else []
+        while index < len(arguments) and not arguments[index].startswith("-"):
+            filenames.append(arguments[index])
+            index += 1
+        count = 0
+        for filename in filenames:
+            if filename.lower().endswith(".tex"):
+                result.append("-t=" + filename)
+                count += 1
+            elif filename.lower().endswith(".bib"):
+                result.append(filename)
+            else:
+                parser.error(
+                    "-t lists require .tex files and .bib bibliography filenames"
+                )
+        if not count:
+            parser.error("-t requires at least one .tex filename")
+    return result
+
+
+def tex_skip_space(source, position):
+    """Skip whitespace and TeX comments between a command and its arguments."""
+    match = re.compile(r"(?:\s|%[^\n]*(?:\n|$))*").match(source, position)
+    return match.end()
+
+
+def tex_group_end(source, start):
+    """Find an argument's end, respecting braces, escapes and comments."""
+    opening = source[start : start + 1]
+    if opening not in ("{", "[", "("):
+        return None
+    closing = {"{": "}", "[": "]", "(": ")"}[opening]
+    depth, position = 0, start + 1
+    while position < len(source):
+        char = source[position]
+        if char == "\\":
+            position += 2
+            continue
+        if char == "%":
+            newline = source.find("\n", position)
+            position = len(source) if newline < 0 else newline + 1
+            continue
+        if char == "}" and depth:
+            depth -= 1
+        elif char == closing and depth == 0:
+            return position + 1
+        elif char == "{":
+            depth += 1
+        position += 1
+    return None
+
+
+def remap_tex_citations(source, aliases, ambiguous):
+    """Replace literal keys in standard citation commands, preserving TeX text."""
+    single = set(
+        (
+            "cite nocite citep citet citealp citealt citeauthor citeyear citeyearpar "
+            "citenum citefullauthor citeyearnp citeonline "
+            "parencite textcite autocite footcite footcitetext smartcite supercite "
+            "fullcite footfullcite citeurl citetitle citedate citefield "
+            "notecite pnotecite fnotecite"
+        ).split()
+    )
+    multiple = set(
+        (
+            "cites parencites textcites autocites footcites footcitetexts smartcites "
+            "supercites notecites pnotecites fnotecites"
+        ).split()
+    )
+    verbatim = {
+        "verbatim",
+        "verbatim*",
+        "Verbatim",
+        "Verbatim*",
+        "BVerbatim",
+        "LVerbatim",
+        "lstlisting",
+        "minted",
+        "comment",
+        "filecontents",
+        "filecontents*",
+    }
+    tokens = re.compile(r"%[^\n]*|\\([A-Za-z@]+)\*?|\\.")
+    changes, cited_ambiguous, position = [], set(), 0
+    while True:
+        match = tokens.search(source, position)
+        if match is None:
+            break
+        position = match.end()
+        command = match.group(1)
+        if command is None:
+            continue
+        cursor = tex_skip_space(source, position)
+        if command in ("verb", "Verb", "lstinline", "mintinline"):
+            if cursor < len(source):
+                if command in ("lstinline", "mintinline") and source[cursor] == "[":
+                    end = tex_group_end(source, cursor)
+                    cursor = tex_skip_space(source, end) if end else len(source)
+                if command == "mintinline" and source[cursor : cursor + 1] == "{":
+                    end = tex_group_end(source, cursor)
+                    cursor = tex_skip_space(source, end) if end else len(source)
+                if cursor < len(source):
+                    end = (
+                        tex_group_end(source, cursor)
+                        if source[cursor] == "{"
+                        else source.find(source[cursor], cursor + 1) + 1
+                    )
+                    position = end or len(source)
+            continue
+        if command == "begin" and source[cursor : cursor + 1] == "{":
+            end = tex_group_end(source, cursor)
+            if end and source[cursor + 1 : end - 1] in verbatim:
+                closing = "\\end{" + source[cursor + 1 : end - 1] + "}"
+                end = source.find(closing, end)
+                position = len(source) if end < 0 else end + len(closing)
+            continue
+        if (
+            command in ("url", "path", "nolinkurl")
+            and source[cursor : cursor + 1] == "{"
+        ):
+            position = tex_group_end(source, cursor) or len(source)
+            continue
+        name = command.lower()
+        if name not in single and name not in multiple:
+            continue
+        if name in multiple:
+            # biblatex multicites allow two global notes in parentheses.
+            for unused in range(2):
+                if source[cursor : cursor + 1] == "(":
+                    end = tex_group_end(source, cursor)
+                    cursor = tex_skip_space(source, end) if end else len(source)
+        while True:
+            for unused in range(2):
+                if source[cursor : cursor + 1] == "[":
+                    end = tex_group_end(source, cursor)
+                    cursor = tex_skip_space(source, end) if end else len(source)
+            if source[cursor : cursor + 1] != "{":
+                break
+            end = tex_group_end(source, cursor)
+            if end is None:
+                break
+            value = source[cursor + 1 : end - 1]
+            # Macro expressions and nested arguments cannot be resolved safely.
+            literal = re.sub(r"%[^\n]*", "", value)
+            if not re.search(r"[\\{}]", literal):
+                for key in re.finditer(r"%[^\n]*|[^\s,%]+", value):
+                    old = key.group()
+                    if old in ambiguous:
+                        cited_ambiguous.add(old)
+                    if old in aliases:
+                        start = cursor + 1 + key.start()
+                        changes.append((start, start + len(old), aliases[old]))
+            cursor = tex_skip_space(source, end)
+            if name not in multiple:
+                break
+    parts, position = [], 0
+    for start, end, replacement in sorted(changes):
+        parts.extend((source[position:start], replacement))
+        position = end
+    parts.append(source[position:])
+    return "".join(parts), len(changes), cited_ambiguous
+
+
+def prepare_tex_updates(filenames, aliases, ambiguous, bibfile, outfile, bibfiles=()):
+    """Read every TeX input before writing anything; reject overlapping paths."""
+    plans, messages, seen = [], [], set()
+    protected = {
+        os.path.realpath(path)
+        for path in (bibfile, outfile, outfile + ".bak", *bibfiles)
+    }
+    for filename in filenames:
+        path = os.path.realpath(filename)
+        if path in seen:
+            continue
+        seen.add(path)
+        backup = os.path.abspath(filename + ".bak")
+        if path in protected or os.path.realpath(backup) in protected:
+            raise ValueError(
+                "TeX input or backup overlaps a bibliography file: %s" % filename
+            )
+        with open(path, "rb") as stream:
+            original = stream.read()
+            mode = os.fstat(stream.fileno()).st_mode
+        updated, count, unresolved = remap_tex_citations(
+            original.decode("utf-8", errors="surrogateescape"), aliases, ambiguous
+        )
+        for key in sorted(unresolved):
+            messages.append(
+                "! Ambiguous citation '%s' in %s; left unchanged. Possible keys: %s; review manually."
+                % (key, filename, ", ".join(ambiguous[key]))
+            )
+        if count:
+            plans.append(
+                dict(
+                    path=path,
+                    backup=backup,
+                    original=original,
+                    updated=updated.encode("utf-8", errors="surrogateescape"),
+                    mode=mode,
+                )
+            )
+            messages.append(
+                "Updated citations in %s (%d replacements)." % (filename, count)
+            )
+    for plan in plans:
+        if os.path.realpath(plan["backup"]) in seen:
+            raise ValueError("TeX backup overlaps another input: %s" % plan["backup"])
+    return plans, messages
+
+
+def stage_file(path, contents, mode):
+    """Prepare an atomic replacement beside its target, preserving permissions."""
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".bibupdate-", dir=os.path.dirname(path)
+    )
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(contents)
+            os.fchmod(stream.fileno(), mode & 0o777)
+        return temporary
+    except BaseException:
+        os.unlink(temporary)
+        raise
+
+
+def write_cleanup(bibliography, plans):
+    """Prepare TeX replacements and backups before writing the bibliography."""
+    staged = []
+    try:
+        for plan in plans:
+            with open(plan["path"], "rb") as stream:
+                if stream.read() != plan["original"]:
+                    raise ValueError(
+                        "TeX file changed during cleanup: %s" % plan["path"]
+                    )
+            for target, contents in (
+                (plan["path"], plan["updated"]),
+                (plan["backup"], plan["original"]),
+            ):
+                staged.append((stage_file(target, contents, plan["mode"]), target))
+        for temporary, target in staged[1::2]:
+            os.replace(temporary, target)
+        with open_output() as output:
+            output.write(bibliography)
+        for temporary, target in staged[::2]:
+            os.replace(temporary, target)
+    finally:
+        for temporary, target in staged:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
 
 def lookup_entry(entry):
@@ -1148,15 +1565,10 @@ def process_options():
     )
 
     parser.add_argument(
-        "bibtexfile",
-        nargs="?",
-        type=argparse.FileType("r"),
-        default=None,
-        help="bibtex file to update",
-    )
-
-    parser.add_argument(
-        "outputfile", nargs="?", type=str, default=None, help="output file"
+        "files",
+        nargs="*",
+        metavar="FILE",
+        help="input bibliography and optional output; with --merge: input bibliographies",
     )
 
     updating = parser.add_argument_group("Updating and checking")
@@ -1198,7 +1610,7 @@ def process_options():
     )
 
     updating.add_argument(
-        "-X",
+        "-x",
         "--arxiv",
         action="store_true",
         default=False,
@@ -1224,33 +1636,56 @@ def process_options():
 
     listing = parser.add_argument_group("Duplicate listing")
     cleanup = parser.add_argument_group("Duplicate cleanup")
-    for group, flags, help_text in [
+    for group, flag, help_text in [
         (
             listing,
-            ("-d", "--list-duplicates"),
+            "--list-duplicates",
             "list duplicate papers and keys without writing a file",
         ),
-        (listing, ("--list-papers",), "list duplicate papers only"),
-        (listing, ("--list-keys",), "list repeated citation keys only"),
+        (listing, "--list-papers", "list duplicate papers only"),
+        (listing, "--list-keys", "list repeated citation keys only"),
         (
             cleanup,
-            ("--duplicates", "--deduplicate"),
+            "--deduplicate",
             "remove duplicate papers and rename repeated keys",
         ),
         (
             cleanup,
-            ("--duplicate-papers", "--remove-duplicate-papers"),
+            "--remove-duplicate-papers",
             "remove duplicate papers, keeping the first",
         ),
         (
             cleanup,
-            ("--duplicate-keys", "--rename-duplicate-keys"),
+            "--rename-duplicate-keys",
             "rename repeated keys using authors and year",
         ),
     ]:
-        group.add_argument(*flags, action="store_true", default=False, help=help_text)
+        group.add_argument(flag, action="store_true", default=False, help=help_text)
+
+    cleanup.add_argument(
+        "--merge",
+        action="store_true",
+        default=False,
+        help="merge two or more .bib files and clean up duplicates",
+    )
+    cleanup.add_argument(
+        "-t",
+        "--texfile",
+        dest="texfiles",
+        nargs="+",
+        action="extend",
+        default=[],
+        metavar="FILE.tex",
+        help="update citations in listed TeX files during cleanup (with .bak backups)",
+    )
 
     output = parser.add_argument_group("Output and formatting")
+    output.add_argument(
+        "--output",
+        dest="named_output",
+        metavar="FILE.bib",
+        help="write the bibliography to this file (also usable with --merge)",
+    )
     output.add_argument(
         "-o",
         "--overwrite",
@@ -1266,13 +1701,13 @@ def process_options():
         default=None,
         metavar="FIELDS",
         action="append",
-        help="a string of bibtex fields to ignore (default: %s)"
+        help="space-separated list of bibtex fields to omit (default: %s)"
         % " ".join(DEFAULT_IGNORED_FIELDS),
     )
 
     output.add_argument(
         "-k",
-        "--keep_fonts",
+        "--keep-fonts",
         action="store_true",
         default=False,
         help=r"do NOT replace fonts \Bbb, \germ and \scr in titles",
@@ -1293,7 +1728,6 @@ def process_options():
     reports.add_argument(
         "-q",
         "--quiet",
-        "--quieter",
         dest="quieter",
         action="count",
         default=2,
@@ -1337,10 +1771,14 @@ def process_options():
     )
 
     # parse the options
-    options = parser.parse_args()
+    options = parser.parse_intermixed_args(tex_file_arguments(sys.argv[1:], parser))
     options.prog = parser.prog
-    options.cleanup_papers = options.duplicates or options.duplicate_papers
-    options.cleanup_keys = options.duplicates or options.duplicate_keys
+    options.cleanup_papers = (
+        options.merge or options.deduplicate or options.remove_duplicate_papers
+    )
+    options.cleanup_keys = (
+        options.merge or options.deduplicate or options.rename_duplicate_keys
+    )
     options.listing = (
         options.list_duplicates or options.list_papers or options.list_keys
     )
@@ -1351,13 +1789,47 @@ def process_options():
             "cleanup options cannot be combined with listing options or --check"
         )
 
+    if options.texfiles and not (options.cleanup_papers or options.cleanup_keys):
+        parser.error(
+            "-t/--texfile requires --merge, --deduplicate, "
+            "--remove-duplicate-papers or --rename-duplicate-keys"
+        )
+    if any(not filename.lower().endswith(".tex") for filename in options.texfiles):
+        parser.error("-t accepts only .tex filenames")
+
     if options.Help:
         # Keep Markdown link definitions for documentation builds, not terminal help.
         help_text = re.sub(r"(?:\n\[[^\]\n]+\]:[^\n]*)+\s*$", "", __doc__)
         bib_print(help_text.rstrip())
         sys.exit()
-    elif options.bibtexfile == None:
+    if options.merge:
+        if len(options.files) < 2:
+            parser.error("--merge requires at least two .bib input files")
+        if any(not filename.lower().endswith(".bib") for filename in options.files):
+            parser.error("--merge accepts only .bib input files")
+        if len({os.path.realpath(path) for path in options.files}) != len(
+            options.files
+        ):
+            parser.error("--merge input files must be distinct")
+        options.inputfiles = options.files
+        options.outputfile = options.named_output
+    else:
+        if len(options.files) > 2:
+            parser.error("use --merge to combine two or more input bibliographies")
+        if len(options.files) == 2 and options.named_output is not None:
+            parser.error("specify the output either positionally or with --output")
+        options.inputfiles = options.files[:1]
+        options.outputfile = options.named_output or (
+            options.files[1] if len(options.files) == 2 else None
+        )
+    if options.named_output is not None and options.overwrite:
+        parser.error("--output cannot be combined with --overwrite")
+    if not options.inputfiles:
         bib_error("no bibtex file specified")
+    try:
+        options.bibtexfile = argparse.FileType("r")(options.inputfiles[0])
+    except argparse.ArgumentTypeError as error:
+        parser.error(str(error))
 
     if options.ignored_fields is None:
         options.ignored_fields = list(DEFAULT_IGNORED_FIELDS)
@@ -1396,19 +1868,26 @@ def process_options():
     bibup.verbose = bib_print if options.quieter == 2 else lambda *arg: None
     bibup.warning = bib_print if options.quieter <= 3 else lambda *arg: None
 
-    # a shorthand for fixed the fonts (to avoid an if-statement when calling it)
+    # a shorthand for fixing the fonts (to avoid an if-statement when calling it)
     bibup.fix_fonts = replace_fonts if not options.keep_fonts else lambda title: title
 
 
-def open_output():
-    """Open the selected bibliography output after backing up an existing file."""
+def output_filename():
+    """Return the selected bibliography output path."""
     if options.overwrite:
         newfile = options.bibtexfile.name
     elif options.outputfile is not None:
         newfile = options.outputfile
     else:
         directory, base = os.path.split(options.bibtexfile.name)
-        newfile = os.path.join(directory, "updated_" + base)
+        prefix = "merged_" if options.merge else "updated_"
+        newfile = os.path.join(directory, prefix + base)
+    return newfile
+
+
+def open_output():
+    """Open the selected bibliography output after backing up an existing file."""
+    newfile = output_filename()
     if os.path.isfile(newfile) and os.path.getsize(newfile) > 0:
         try:
             shutil.copyfile(newfile, newfile + ".bak")
@@ -1426,24 +1905,29 @@ def main():
     """
     process_options()
 
-    # now we are ready to read the BibTeX file and start working
+    entries = None
     try:
-        if (
-            options.listing or options.cleanup_papers or options.cleanup_keys
-        ) and hasattr(options.bibtexfile, "reconfigure"):
-            options.bibtexfile.reconfigure(newline="")
-        papers = options.bibtexfile.read()  # file opened by argparse
-        options.bibtexfile.close()
-    except IOError:
-        bib_error("unable to open bibtex file %s" % options.bibtexfile.name)
+        if options.merge:
+            papers, entries = merge_sources(options.inputfiles, options.bibtexfile)
+            validate_merge_output(options.inputfiles, output_filename())
+        else:
+            if (
+                options.listing or options.cleanup_papers or options.cleanup_keys
+            ) and hasattr(options.bibtexfile, "reconfigure"):
+                options.bibtexfile.reconfigure(newline="")
+            papers = options.bibtexfile.read()
+            options.bibtexfile.close()
+    except (ValueError, OSError) as error:
+        bib_error(str(error))
 
-    if "@" not in papers:
-        bib_error("no bibtex entries found in %s" % options.bibtexfile.name)
-    asterisk = papers.index("@")
+    if "@" not in papers or (options.merge and not entries):
+        bib_error("no bibtex entries found in %s" % ", ".join(options.inputfiles))
+    first_entry = papers.index("@")
 
     if options.listing or options.cleanup_papers or options.cleanup_keys:
         try:
-            entries = list(source_entries(papers))
+            if entries is None:
+                entries = list(source_entries(papers))
             if options.listing:
                 for warning in duplicate_warnings(
                     entries,
@@ -1452,17 +1936,30 @@ def main():
                 ):
                     bibup.warning(warning)
             else:
-                updated, messages = cleanup_duplicates(
+                updated, messages, aliases, ambiguous = cleanup_duplicates(
                     papers,
                     entries,
                     papers=options.cleanup_papers,
                     keys=options.cleanup_keys,
                 )
-                with open_output() as output:
-                    output.write(updated)
-                for message in messages:
+                plans, tex_messages = prepare_tex_updates(
+                    options.texfiles,
+                    aliases,
+                    ambiguous,
+                    options.bibtexfile.name,
+                    output_filename(),
+                    options.inputfiles,
+                )
+                write_cleanup(updated, plans)
+                if options.merge:
+                    messages.insert(
+                        0,
+                        "Merged %d bibliography files into '%s'."
+                        % (len(options.inputfiles), output_filename()),
+                    )
+                for message in messages + tex_messages:
                     bibup.warning(wrap_report(message))
-        except ValueError as error:
+        except (ValueError, OSError) as error:
             bib_error(str(error))
         return
 
@@ -1476,7 +1973,7 @@ def main():
     # we don't need to create a new bibtex file
     if not options.check:
         newbibfile = open_output()
-        newbibfile.write(papers[:asterisk])
+        newbibfile.write(papers[:first_entry])
 
     # Only AMS lookups run in workers. arXiv stays on this thread so its
     # requests remain sequential and respect the shared delay between calls.
@@ -1486,7 +1983,7 @@ def main():
                 bt.arxiv()
             bt.report_update()
 
-        # now write the new (and hopefully) improved entry
+        # now write the new (hopefully) improved entry
         if not options.check:
             newbibfile.write("%s\n\n" % bt)
 
@@ -1503,26 +2000,35 @@ __doc__ = r"""# bibupdate
 
 Usage:
 
-    bibupdate [-h|-H] [-a] [-X] [-c] [-d] [-k] [-i FIELDS] [-l LOG]
+    bibupdate [-h|-H] [-a] [-x] [-c] [-k] [-i FIELDS] [-l LOG]
               [-m | -M | -n] [-o] [-q] [--threads N] [-w LEN]
-              [--duplicates | --duplicate-papers | --duplicate-keys]
-              [--list-duplicates | --list-papers | --list-keys]
-              bibtexfile [outputfile]
+              [--deduplicate] [--remove-duplicate-papers] [--rename-duplicate-keys]
+              [--list-duplicates] [--list-papers] [--list-keys]
+              [-t FILE.tex [FILE.tex ...]]
+              [--output FILE.bib] bibtexfile [outputfile]
+    bibupdate --merge [options] FILE.bib FILE.bib [FILE.bib ...]
 
 This is a command line tool for updating the entries in a [BibTeX] file using the
-free tools provided by the American Mathematical Society: [mrlookup], [MathSciNet]
+tools provided by the American Mathematical Society: [mrlookup], [MathSciNet]
 and [MRef]. By default [bibupdate] uses [mrlookup] to update `article`, `book`,
 `inproceedings` and `incollection` entries when they do not have an
 `mrnumber` field. Entries are not updated if they already have an
 `mrnumber` field, even an empty one, unless `--all` or `--check`
-is used. With the `-X` option, [bibupdate] looks for each paper in the
-[arXiv] and adds `eprint` and `archiveprefix` fields for all the papers
-that it finds.
+is used. The `-x` option makes [bibupdate] look for each paper in the
+[arXiv] and add `eprint` and `archiveprefix` fields for all the papers
+that it finds. In addition, [bibupdate] is able to merge bibliography
+files, removing duplicate papers and keys in the process and,
+optionally, updating citations to renamed duplicate keys in [LaTeX] files.
 
-By default, [bibupdate] writes the updated entries to a new file, with the
-filename given by adding a "updated_" prefix. USing the  update the bib file
-in place, use the `--overwrite` option. This should be used with care
-because you can potentially lose data.
+By default, [bibupdate] does not change your original file. Instead, it
+writes the updated entries to a new file, with the filename given by 
+adding an `updated_` prefix, so *file.bib* becomes *updated_file.bib*.
+To update the bib file in place, use `--overwrite`, or give a output
+filename. Existing output files are backed up with `.bak` extensions,
+but `--overwrite` should still be used with care.
+
+This should be used with care because you
+can potentially lose data.
 
 **Options by task**:
 
@@ -1532,33 +2038,40 @@ because you can potentially lose data.
     -M, --mathscinet      use mathscinet to update bibtex entries (less flexible)
     -n, --mref            use mref to update bibtex entries
     -a, --all             update or validate ALL BibTeX entries
-    -X, --arxiv           add arXiv eprint fields to entries
-    -c, --check           check all entries in the bib file and report duplicates
+    -x, --arxiv           add arXiv eprint fields to entries
+    -c, --check           check all entries and report duplicates without writing a file
 
 **Duplicate listing**
 
-    -d, --list-duplicates list duplicate papers and keys without writing a file
+    --list-duplicates     list duplicate papers and keys without writing a file
     --list-papers         list duplicate papers only
     --list-keys           list repeated citation keys only
 
 **Duplicate cleanup**
 
-    --duplicates          remove duplicate papers and rename repeated keys
-    --duplicate-papers    remove duplicate papers, keeping the first
-    --duplicate-keys      rename repeated keys using authors and year
+    --deduplicate         remove duplicate papers and rename repeated keys
+    --remove-duplicate-papers
+                          remove duplicate papers, keeping the first
+    --rename-duplicate-keys
+                          rename repeated keys using authors and year
+    --merge               merge two or more .bib files and clean up duplicates
+    -t, --texfile FILE.tex [FILE.tex ...]
+                          update citations in listed TeX files during cleanup
 
 **Output and formatting**
 
+    --output FILE.bib     write the bibliography to this file
     -o, --overwrite       update/overwrite the bibtex file (use with care)
     -i FIELDS, --ignored-fields FIELDS
-                          comma separated list of bibtex fields to ignore
-    -k, --keep_fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
+                          space-separated list of bibtex fields to ignore
+    -k, --keep-fonts      do NOT replace fonts \Bbb, \germ and \scr in titles
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
     --threads N           number of concurrent AMS lookups (default: 1)
 
 **Reports and logging**
 
-    -q, --quiet           brief updates and missed lookups (repeat to suppress)
+    -q, --quiet           brief updates and missed lookups
+    -qq                   only print errors
     -l LOG, --log LOG     log messages to specified file (defaults to stdout)
 
 **Help and version**
@@ -1567,259 +2080,272 @@ because you can potentially lose data.
     -H, --Help            print full program description
 
 **Note:**
-As described below, you should check the new file for errors before deleting the
-original version of your [BibTeX] file.
-
-By default, [bibupdate] does not change your original database file. Instead, it creates a
-new file with the name *updated_file.bib*, if your original file was *file.bib*.
-It is also possible to have it replace your current file (use carefully!), or to
-specify an output file.
+As described below, you should check the updated `.bib` file for errors
+before deleting the original [BibTeX] file.
 
 [BibTeX] is widely used by the [LaTeX] community to maintain publication databases.
 This script attempts to add missing fields to the papers in a [BibTeX] database
-file by querying [mrlookup] and getting the missing information from there. This
-is not completely routine because to search on [mrlookup] you need either the
-authors or the title of the article and both of these can have non-standard
-representations. If the article is already published then it is also possible to
-use the publication year and its page numbers. To search on [mrlookup] we:
+file by querying [mrlookup] and getting the missing publication data from there.
+This is not completely routine because an [mrlookup] search requires either the
+names of the authors, or the title of the article, and both of these can have
+non-standard representations. If the article is already published, then it is
+also possible to use the publication year and its page numbers as part
+of the search. To search on [mrlookup] we:
 
 - use the first author's surname (accents and compound surnames can be problematic)
-- use numeric page ranges or a single numeric page, when available for a
-  published entry
+- use numeric page ranges, or a single numeric page, when available
 - include the year for books, or when a numeric first page is available
-- use the cleaned title when no numeric first page is available
+- use the cleaned title when a numeric first page is not available
 
-The author query uses only the first author's surname: [mrlookup] does not
-interpret a [BibTeX] list of authors joined by `and` as separate names. Braces
-used to protect capitals in titles (for example `{{Kac-Moody}}`) are removed
-for searching and matching; the title stored in the entry retains its braces.
+The author query uses only the first author's surname because [mrlookup] does not
+accept multiple author names joined by 'and'. Braces used to protect capitals in
+titles (for example `{{Kac-Moody}}`) are removed when searching and
+matching, with the title stored in the [BibTeX] file retaining its braces.
 
-If there is a unique match from [mrlookup] then [bibupdate]
-updates the fields supplied by [mrlookup], except for the citation key and the
-fields excluded by `--ignored-fields`. Local fields that are not supplied by
-[mrlookup], such as `eprint`, are retained. By default, a message is printed whenever
-existing fields in the database are changed. If the title of the retrieved paper
-does not (fuzzily) match that of the original article then the entry is NOT
+If there is a unique match from [mrlookup], then [bibupdate] updates the entry in
+the [BibTeX] file using the field values returned by an [mrlookup] search, except for
+the citation key and any fields excluded by `--ignored-fields`. Any fields that are
+not returned by [mrlookup], such as `eprint`, are retained. By default, a message is
+printed whenever an entry in the database is changed. If the title of the retrieved paper
+does not (fuzzily) match that of the original article, then the entry is NOT
 updated and a warning message is printed.
 
-Although some care is taken to make sure that the new [BibTeX] entries correspond
-to the same paper that the original entry referred to there is always a (small?)
-chance the new entry corresponds to an entirely different paper. In my
+Although some care is taken to ensure that the new [BibTeX] entries correspond
+to the original entry in the [BibTeX] file, there is always a (small?)
+chance the new entry corresponds to a completely different paper. In my
 experience this happens rarely, and mostly with unpublished manuscripts. In any
 case, before you delete your original [BibTeX] file *you are strongly advised to
-check the updated file BibTeX file carefully for errors!*
+check the updated BibTeX file carefully for errors!*
 
-By default the program prints each updated entry's citation key on its own line,
-followed by an indented bibliography-style reference. Report lines wrap at 78
-columns, preserving the complete authors, title and publication details. If
-[arXiv] fields are added as well, they appear in the same reference. `--check`
-uses this compact layout to show entries that would change, without writing an
-updated file. You can also compare the original and updated files using *diff*.
+By default, the program prints a compact listing of any updated paper in the
+[BibTeX] file, including any added [arXiv] fields. This can generate a
+lot of output the first time [bibupdate] is run on large files, later runs
+produce much less output.
 
-As [bibupdate] calls [mrlookup] this program will only be useful if you have
+As [bibupdate] calls [mrlookup], this program will only be useful if you have
 papers in your database that are listed in [MathSciNet]. As described below it is
 also possible to call [MathSciNet] directly, however, this is less flexible
 because the `mrnumber` field for each paper is required.
 
-I wrote this script because I wanted to automatically add links to journals, the
-[arXiv] and DOIs to the bibliographies of my papers using [hyperref]. This script
-allowed me to add the missing urls and DOI fields to my [BibTeX] database. As a
-bonus the script helped me to correct many minor errors that had crept into my
-[BibTeX] file over the years (for example, incorrect page numbers and publication
-years). Now I use the program to automatically update the preprint entries in my
-database when the papers appear in [MathSciNet] after they are published.
+I wrote this script because I wanted to automatically update the papers
+in my [BibTeX] files when they were published, so that the file has
+up-to-date information on all of the papers in the file, including
+journal names, [arXiv] links, and DOIs for each paper. As a bonus
+the script helped me to correct many minor errors that had crept
+into my [BibTeX] file over the years (for example, incorrect page
+numbers and publication years).
 
 ## Options and defaults
 
-Without options, [bibupdate] uses [mrlookup] with one AMS lookup at a time,
-prints compact references to standard output, and writes `updated_file.bib`
-beside the input `file.bib`. The `--all`, `--arxiv`, `--check`, `--duplicates`,
-`--keep_fonts` and `--overwrite` switches are off. Field-value wrapping is off (`--wrap 0`).
+By default, [bibupdate] uses [mrlookup], sending one AMS lookup request at
+a time. It prints a compact listing for each entry in the file that is
+updated, writing the updated [BibTeX] file to `updated_file.bib` if the
+original input file was `file.bib`.
 
 ### Updating and checking
 
 #### `-m, --mrlookup`
 
-Use mrlookup to update bibtex entries (default)
+Use [mrlookup] to update [BibTeX] entries (default)
 
 #### `-M, --mathscinet`
 
-Use mathscinet to update bibtex entries
+Use [MathSciNet] to update [BibTeX] entries
 
 #### `-n, --mref`
 
-Use mref to update bibtex entries
+Use [MRef] to update [BibTeX] entries
 
-These three options select which of the free AMS tools is used to update the
-[BibTeX] entries in the database. They are all free services provided by the
-American Mathematical Society and [bibupdate] talks to them through the JSON
-web APIs behind the AMS [free tools] pages.
+By default [mrlookup] is used. Its main advantage is that it has a more
+flexible search mechanism using author, title, year and page numbers,
+so it can find papers even when they do not yet have an `mrnumber`.
 
-By default [mrlookup] is used. Its advantage is that it allows flexible
-searching by author, title, year and page numbers, so it can find papers even
-when they do not yet have an `mrnumber`.
+With `-M`, the entry is looked up using its `mrnumber`. Entries with missing,
+empty or non-numeric MR numbers are skipped, including with `--all` and `--check`.
 
-With `-M` the entry is looked up directly by its `mrnumber`. A field containing
-digits is required: missing, empty or non-numeric MR numbers are skipped,
-including with `--all` and `--check`.
-
-With `-n` the whole entry is handed to [MRef] as a free-form reference. Its
-best matching record is still checked against the local title by [bibupdate].
-Like [mrlookup], [MRef] normally checks only `article`, `book`,
-`inproceedings` and `incollection` entries without an `mrnumber` field; use
-`--all` to check all recognised entry types.
+With `-n`, the full [BibTeX] entry is handed to [MRef] as a free-form
+reference. The best matching record is then checked against the original
+title. Like [mrlookup], [MRef] normally checks only `article`, `book`,
+`inproceedings` and `incollection` entries without an `mrnumber` field.
+Use `--all` to check all recognised entry types.
 
 #### `-a, --all`
 
 Update or validate ALL BibTeX entries
 
-By default this switch is off. With [mrlookup] or [MRef], enabling it checks all
-recognised entry types, including entries with an `mrnumber` field. With
-`--arxiv`, it also checks entries that already have an `eprint` field.
-The `-M` tool always requires a usable MR number, even with `--all`.
+#### `-x, --arxiv`
 
-#### `-X, --arxiv`
+Update the arXiv entry for each paper
 
-Also add arXiv eprint fields to entries
-
-This switch is off by default. In addition to the usual AMS lookup, query the [arXiv] for each entry
-and, when the paper is found there, add `eprint` and `archiveprefix`
-fields to the [BibTeX] entry:
+When the paper is found, add `eprint` and `archiveprefix` fields to
+the [BibTeX] entry:
 
     eprint = {{2211.07069}},
     archiveprefix = {{arXiv}}
 
-[bibupdate] searches the [arXiv] using the significant words in the title and
-only adds these fields when there is a unique paper whose title is a good
-(fuzzy) match. This option works together with any of the `-m`, `-M` or
-`-n` lookup tools. The [arXiv] lookup changes only `eprint` and `archiveprefix`.
-Entries with an `eprint` field, even an empty one, are skipped unless `-a` or
-`--check` is used. When such entries are checked, these two fields can be replaced.
-Entries without a usable title cannot be searched.
+[bibupdate] searches the [arXiv] using the significant words in the
+title. A paper returned by the [arXiv] is counted as a match only
+when there is a unique paper with a sufficiently good (fuzzy) match.
+The `-x` option can be combined with any of the `-m`, `-M` or
+`-n` lookup tools. Entries with an existing `eprint` field, even an
+empty one, are skipped unless `-a` or `--check` is used. Entries
+without a usable title cannot be searched.
 
-[bibupdate] waits at least {arxiv_delay} seconds after each completed [arXiv]
-request before starting the next one. Updating a large database
-with `-X` can therefore take a while.
+As requested by the [arXiv], [bibupdate] waits at least {arxiv_delay}
+seconds after each completed [arXiv] request before sending the next one.
+Updating a large database with `-x` can take a long time.
 
-#### `-c, --check
+#### `-c, --check`
 
-Check all entries and report duplicates
-
-This switch is off by default. It prints each entry that would change as a
-compact reference, using the proposed database fields and retaining any
-other local fields. The original [BibTeX] file is not changed and no output
-bibliography is written.Check mode implies `--all`; it runs [arXiv] lookups
-only when `--arxiv` is also supplied. Proposed references remain visible even
-with `-qq`.
-
-Before network lookups, checks the input file for repeated citation keys and
-papers listed under different keys. Shared DOI, MR number or arXiv identifiers
-identify duplicate papers. Matching normalized titles and authors are reported
-as possible duplicates; capitalization braces, punctuation, spacing and given
-names versus initials are normalized. Warnings name the keys and source line
-numbers for review, and remain visible with `--quiet`. Duplicate warnings
-appear in purple on terminals; log files and redirected output remain plain
-text.
+Check all entries and report duplicates, printing compact listings for each
+database entry that would be changed. No output file is written. This option
+implies `--all`.
 
 #### `--threads N`
 
 Number of concurrent AMS lookups
 
-Use `--threads 2` to overlap two AMS lookups. The default is one thread;
-the thread count must be a positive integer. This works with [mrlookup],
-[MathSciNet] and [MRef]. Entries and log messages retain their original order.
-
-[arXiv] lookups remain sequential and keep their delay between requests,
-regardless of the thread count.
+Use `--threads N` to run `N` searches in parallel. [arXiv] lookups remain
+sequential and keep their delay between requests, regardless of the
+thread count.
 
 ### Duplicate listing
 
-#### `-d, --list-duplicates`
+#### `--list-duplicates`
 
-List repeated papers and citation keys without changing the bibliography
-
-No network queries, output bibliography or backups are made, even with
-`--overwrite` or an output filename. Warnings show keys and source lines in
-purple on terminals, remain visible with `--quiet`, and are suppressed by `-qq`.
-If no duplicates are found, nothing is printed.
+List any duplicated papers, or citation keys, in the [BibTeX] database.
 
 #### `--list-papers`
 
 List duplicate papers only, including possible title-and-author matches
 
+Two entries are treated as the same paper if they share a DOI, an MR number
+or an arXiv identifier. As a fallback, entries whose normalized titles and
+author lists (surnames and first initials) agree are reported as *possible*
+duplicates. Entries linked through a chain of such matches are grouped
+together. The same rules are used by `--check`, `--remove-duplicate-papers`
+and `--deduplicate`.
+
 #### `--list-keys`
 
 List repeated citation keys only
 
-The same listing-only behaviour and quiet levels apply to all three listing
-options. Listing options may be combined to show both kinds of duplicates.
-
 ### Duplicate cleanup
 
-#### `--duplicates` (alias `--deduplicate`)
+#### `--deduplicate`
 
 Remove duplicate papers and rename repeated citation keys
 
-All duplicate modes are off by default. This offline cleanup first removes
-repeated papers, then renames repeated keys among the remaining entries.
-It makes no AMS or [arXiv] queries. The output is `updated_file.bib` beside
-`file.bib`, or the supplied output filename. Use `--overwrite` to replace the
-input; existing non-empty output files are backed up to `.bak` as usual.
+This offline cleanup first removes repeated papers, then renames repeated
+keys among the remaining entries. As usual, the updated file is written
+to `updated_file.bib` unless `--overwrite` is used.
+Existing fields and formatting are preserved; missing fields are added from
+later copies. Ignored-field, font-conversion and wrapping options do not apply
+to cleanup. Cleanup cannot be combined with listing options or `--check`, and
+the lookup options (`-m`, `-M`, `-n`, `-a` and `-x`) are ignored.
 
-The retained entries keep their original fields and formatting: ignored-field,
-font-conversion and wrapping options do not apply to cleanup. Cleanup cannot
-be combined with listing options or `--check`. Other lookup options are ignored.
-
-**Changed meaning:** `--duplicates` now writes a cleaned bibliography.
-Use `-d` or `--list-duplicates` for the previous listing-only behaviour.
-
-#### `--duplicate-papers` (alias `--remove-duplicate-papers`)
+#### `--remove-duplicate-papers`
 
 Remove repeated papers, keeping the first occurrence in file order
 
-Papers match through a shared DOI, MR number or arXiv identifier, or through
-matching normalized titles and authors, as described under `--check`.
-Connected matches form one group, even when linked through different identifiers.
-Papers with the same citation key are also compared. Title-and-author matching
-is heuristic; inspect `--list-papers` before removing entries.
+Papers are matched as described under `--list-papers`. Title-and-author
+matching is heuristic, so inspect the output of `--list-papers` before
+removing entries.
 
-Only the first entry's fields are kept; fields from later entries are not merged.
-Each removal reports the removed key and the retained key, with source lines.
-Literal `crossref`, `xref`, `related`, `entryset` and `xdata` references inside the
-bibliography are updated where the removed key has no surviving occurrence.
-String macros are preserved without expansion. Citations in external LaTeX files
-are not changed; use the reported mappings to update citations to removed keys.
+The first entry is the base. Missing fields are copied from later entries in
+file order. Existing fields, including empty fields, are kept; if several copies
+supply the same missing field, the first value wins. Field expressions and
+macros are copied without expansion. Each removal reports the removed key and
+the retained key, with source lines. Literal `crossref`, `xref`, `related`,
+`entryset` and `xdata` references inside the bibliography are updated where
+the mapping is unambiguous. Use `-t` to update citations in external [LaTeX]
+files; otherwise these must be updated manually.
 
-#### `--duplicate-keys` (alias `--rename-duplicate-keys`)
+#### `--rename-duplicate-keys`
 
-Rename repeated keys without deleting papers
+Rename repeated keys without deleting papers. The first occurrence of each
+key is kept. Duplicated key names are replaced with a key formed
+from the authors' surnames and the year, for example `AcharRiche2019`.
+Editors' names are used if there are no authors. If necessary, a suffix
+of `a`, `b`, ..., `z`, `aa`, etc. is added to ensure that the key names
+are unique.
 
-Keep the first occurrence of each key. Later occurrences receive a key formed
-from all authors' surnames and the year, for example `AcharRiche2019`.
-Editors are used if authors are missing, and `Anonymous` if neither is available.
-When the key is already used, add `a`, `b`, ..., `z`, `aa`, etc., reserving all
-original keys and newly generated keys. Each rename is reported with its source
-line; use `--log` to save the mappings. References to the original repeated key continue to refer to its first
-surviving occurrence; ambiguous citations need manual review.
+Using `--remove-duplicate-papers` together with `--rename-duplicate-keys` is equivalent
+to `--deduplicate`.
 
-Using `--duplicate-papers` together with `--duplicate-keys` is equivalent
-to `--duplicates`.
+#### `--merge`
+
+Merge two or more BibTeX files, removing duplicate papers and keys
+
+The input files must have a `.bib` extension and are processed in the
+order given. When removing duplicates, the rules used by `--deduplicate`
+apply: the first copy of each paper and key is kept, and any repeated
+keys are renamed using the authors' names and the publication year.
+Fields missing from the first copy are added from
+later entries, with earlier values having precedence. Retained entries,
+comments, preambles and string macros keep their original formatting;
+macros are not expanded for duplicate matching.
+
+Merging is offline and cannot be combined with `--check` or duplicate
+listing options.
+
+By default, the merged [BibTeX] file is written to `merged_first.bib` if 
+the first [BibTeX] file is called `first.bib`. Use `--output` to
+write to a different filename, or `--overwrite` to overwrite the
+first [BibTeX] file, which will be backed up with a `.bak` extension.
+
+    bibupdate --merge first.bib second.bib --output combined.bib
+    bibupdate --merge first.bib second.bib -t paper.tex --output combined.bib
+
+Use `-t`/`--texfile` to update unambiguous citations in associated [LaTeX]
+files, which are backed up with `.bak` extensions.
+
+#### `-t, --texfile FILE.tex [FILE.tex ...]`
+
+Update citation keys in the listed [LaTeX] files when cleaning duplicate entries
+
+This option requires `--merge`, `--deduplicate`, `--remove-duplicate-papers` or
+`--rename-duplicate-keys`. The `.tex` and `.bib` extensions distinguish the
+TeX files from the bibliography and optional output file, for example:
+
+    bibupdate --deduplicate -t chapter.tex appendix.tex papers.bib
+
+Only unambiguous citation key mappings are applied to the [LaTeX] files.
+If different papers share a key, citations of that key in the [LaTeX] files
+are left unchanged and a warning is printed. The later papers are given new
+unique keys in the merged [BibTeX] file.
+
+Standard literal citation commands such as `\cite`, `\citep`, `\nocite`,
+`\parencite` and `\textcites` are supported, including optional notes and
+comma-separated key lists. Comments, verbatim text and other commands are
+preserved. Custom citation macros are not expanded, and included files are
+only processed if explicitly listed.
+
+Before changing a TeX file, its original contents are saved with a `.bak`
+extension, for example `chapter.tex.bak`. Unchanged files are not rewritten
+or backed up. Existing backups of changed files are replaced.
 
 ### Output and formatting
 
+#### `--output FILE.bib`
+
+Write the bibliography to the specified file
+
+Use this option to specify the name of the new [BibTeX] output file. An
+existing non-empty output file is first backed up with a `.bak` extension.
+This option cannot be combined with `--overwrite`, or with an output file
+given as a second positional argument.
+
 #### `-o, --overwrite`
 
-Overwrite the existing bibtex file with the updated version
-
-This switch is off by default. Without it, the output is `updated_file.bib`
-beside the input `file.bib`, or the output filename supplied as the last
-argument. With `-o`, the input file is replaced and any output filename is
-ignored. An existing, non-empty output file is copied to its `.bak` file before
-writing, including when `-o` replaces the input. An existing `.bak` is replaced.
+Overwrite the existing [BibTeX] file with the updated version. The original
+file is first backed up with a `.bak` extension. This option cannot be
+combined with `--output`.
 
 #### `-i FIELDS, --ignored-fields=FIELDS`
 
-A string of [BibTeX] fields to ignore when writing the updated file
+A space-separated list of [BibTeX] fields to omit when writing the updated
+[BibTeX] file
 
 By default [bibupdate] removes the following fields from each [BibTeX] entry:
 
@@ -1833,109 +2359,87 @@ every field:
     bibupdate -i coden -i fjournal file.bib  # ignore coden and fjournal
     bibupdate -i "" file.bib                 # do not ignore any fields
 
-#### `-k, --keep_fonts`
+#### `-k, --keep-fonts`
 
-do NOT replace fonts `\Bbb`, `\germ` and `\scr` in titles
-
-This switch is off by default, so supported font commands in titles are replaced.
-The [BibTeX] entries generated by [mrlookup] use `\Bbb`, `\germ` and `\scr` for the
-`\mathbb`, `\mathfrak` and `\mathscr` fonts. By default, in *title* fields,
-these fonts specifications are automatically changed to the following more
-[LaTeX] friendly fonts:
+Use `-k` to retain legacy LaTeX font names in titles. By default, the
+following font substitutions are automatically applied:
 
 - `\Bbb X` --> `\mathbb{{X}}`
 - `\scr X` --> `\mathcal{{X}}`
 - `\germ X` --> `\mathfrak{{X}}`
 
-Use `-k` to retain the original font commands. This applies both to input titles
-and to titles retrieved from AMS.
+This applies both to input titles and to titles retrieved from AMS.
 
 #### `-w LEN, --wrap LEN`
 
-Wrap bibtex fields to specified width
+Wrap [BibTeX] fields to specified width
 
-The default is `0`, which leaves field values unwrapped. A positive `LEN`
-wraps each field value to that width, with a tab before continuation lines.
-Field names, braces and indentation add to the total line length, so `LEN`
-is not a strict limit on complete output lines. Negative values are rejected.
+By default, lines are not wrapped (a wrap length of `0`). A positive
+wrap length `LEN` wraps each field value to that width, with a tab before
+continuation lines.
 
 ### Reports and logging
 
-#### `-q, --quiet, --quieter`
+#### `-q, --quiet`
 
 Print fewer messages
 
-By default, [bibupdate] prints a wrapped reference for each updated entry and
-a notice for each attempted AMS lookup that has no unique matching paper, including
-preprints. With `-q` or `--quiet` it prints brief update notices, missed
-lookups and network warnings, without separator bars or field-by-field changes.
-Missed lookups appear in red when the output is a terminal; redirected output
-and log files contain plain text. Reports wrap at 78 columns. `--quieter`
-is retained as an alias. Repeat the option (`-qq`) to suppress update notices
-and lookup warnings. Fatal errors are still reported.
-
-The `--check` option prints proposed references in the compact layout,
-including when combined with `-q` or `-qq`. Duplicate warnings follow the same
-warning levels as missed lookups. Use `-l` to send messages to a log file.
+By default, [bibupdate] prints a compact reference for each paper that
+is updated, and a warning for each paper for which the AMS lookup fails.
+With `-q` (or `--quiet`) only a one-line message is printed for updated
+papers, together with the warnings for failed lookups. With `-qq` only errors
+are printed. Failed lookups are printed in red when the output is a terminal.
 
 #### `-l LOG, --log LOG`
 
 Log output to file (defaults to stdout)
 
-By default reports and warnings go to standard output. Use `-l` to write them
-to a file instead; an existing log file is replaced. Fatal errors are also
+By default, reports and warnings go to standard output. Use `-l` to write
+them to a file. Existing log files are overwritten. Fatal errors are always
 printed to standard error.
 
 ### Help and version
 
 #### `-h, --help`
 
-Show a short list of options, grouped by task, and exit.
+Print a short list of command-line options
 
 #### `-H, --Help`
 
-Print this full description, including grouped options, defaults and known
-issues, and exit.
-
-#### `-v, --version`
-
-Print the program version and licence, and exit.
+Print the full-help message
 
 ## Known issues
 
 - **BibTeX syntax:** the parser uses regular expressions rather than a full
   BibTeX grammar. Use brace-delimited entries with one field per line and
-  braced values or simple bare words. Multiple fields on one line, quoted
+  braced values or simple words. Multiple fields on one line, quoted
   values, `#` concatenation, string-macro expansion, and
   fields containing `@` or `={{...}}` can be misread or omitted. Inspect the
   output carefully when using these forms. Duplicate listing and cleanup use
   a source scanner that preserves quoted and nested values, comments and macros;
   macros are not expanded for duplicate matching.
 - **Title matching:** capitalization braces and apostrophes are removed before
-  searching and comparison. Dollar-delimited mathematics is also removed,
-  which can make distinct titles look alike. Other TeX commands and accents
-  are not fully decoded, so
+  searching and comparing. Mathematics is also removed, which can make distinct
+  titles look similar. TeX commands and accents are not fully decoded, so
   equivalent spellings can still fail to match. A unique fuzzy title match is
-  a heuristic, not a guarantee that the paper is correct.
+  a heuristic, not a guarantee that a paper has been correctly identified.
 - **Author names:** [mrlookup] uses only the first author's surname. A compound
   surname is preserved in `surname, given names` form; without a comma, only
   the last word is used. Accents, name particles and alternative spellings can
   therefore affect searches.
 - **Page numbers:** numeric ranges and single numeric pages are supported.
   Article identifiers and prefixed page numbers are not handled reliably.
-  If no numeric first page is extracted, the title is used instead; for
-  non-book entries the year is then omitted from the query.
-- **Ambiguous or missing results:** an AMS entry is updated only when one
-  candidate survives title matching. No match or multiple matches leave it
-  unchanged and produce a missed-lookup notice. Entries without a usable title
-  have less protection against an incorrect match. Skipped entries, such as
-  those with an existing `mrnumber` under the default settings, are not failed
-  lookups and produce no missed-lookup notice.
+  When only non-numeric page numbers are given, the title is used
+  instead. For non-book entries the year is then omitted from the query.
+- **Ambiguous or missing results:** an AMS entry is updated only when
+  there is a unique match. [BibTeX] entries are not changed when no
+  matches, or multiple matches, are found. Entries without a usable title
+  are more likely to receive an incorrect match. By default, skipped
+  entries, such as those with an existing `mrnumber`, are never changed.
 - **arXiv searches:** searches use significant title words and examine at most
-  ten results. Titles dominated by mathematics or short words can be missed.
-  No unique title match leaves the arXiv fields unchanged; this is normally
-  silent. With `--all` or `--check`, an existing identifier can be replaced by
-  the identifier of the matching title, so review such changes.
+  ten results. Titles dominated by mathematics or short words are more
+  likely to receive false matches. As with [mrlookup] searches, the [arXiv]
+  fields for a paper are updated only if there is a unique match.
 - **Network services:** connections can fail, time out or return unexpected
   data. Requests use a {url_timeout}-second timeout. Connection errors and
   timeouts produce warnings, and processing continues. A missed lookup does
@@ -1944,7 +2448,9 @@ Print the program version and licence, and exit.
 ## Licence
 
 {0.author}
+
 {0.license}
+
 [bibupdate] Version {0.version}. Copyright (C) {0.copyright}
 
 This program is free software: you can redistribute it and/or modify it under
@@ -1958,13 +2464,11 @@ PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 [BibTeX]: http://www.bibtex.org/
 [mrlookup]: https://mathscinet.ams.org/mathscinet/freetools/mrlookup
-[MathSciNet]: https://mathscinet.ams.org/mathscinet/freetools/mrlookup
+[MathSciNet]: https://mathscinet.ams.org/mathscinet/publications-search
 [MRef]: https://mathscinet.ams.org/mathscinet/freetools/mref
 [bibupdate]: {0.url}
 [arXiv]: http://arxiv.org/
-[LaTeX]: http://en.wikipedia.org/wiki/LaTeX
-[hyperref]: http://www.ctan.org/pkg/hyperref
-[free tools]: https://mathscinet.ams.org/mathscinet/freetools
+[LaTeX]: https://latex-project.org/
 [GPL]: http://www.gnu.org/licenses/gpl.html
 """.format(
     bibup,
