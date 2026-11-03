@@ -61,10 +61,10 @@ default_metadata = {
     "license": "GNU General Public License, Version 3, 29 June 2007",
     "name": "Andrew Mathas",
     "program": "bibupdate",
-    "release date": "2 November 2026 CET",  # @bump@
+    "release date": "3 November 2026 CET",  # @bump@
     "repository": "https://github.com/AndrewMathas/BibUpdate",
     "url": "https://github.com/AndrewMathas/BibUpdate",
-    "version": "2.0.0",  # @bump@
+    "version": "2.1.0",  # @bump@
 }
 
 

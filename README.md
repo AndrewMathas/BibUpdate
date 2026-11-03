@@ -1,6 +1,6 @@
 # bibupdate
 
-[![Version](https://img.shields.io/badge/version-2.0.0-success)](https://github.com/AndrewMathas/BibUpdate)
+[![Version](https://img.shields.io/badge/version-2.1.0-success)](https://github.com/AndrewMathas/BibUpdate)
 [![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
 [![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
@@ -577,7 +577,7 @@ Andrew Mathas
 
 GNU General Public License, Version 3, 29 June 2007
 
-[bibupdate] Version 2.0.0. Copyright (C) 2012-2026
+[bibupdate] Version 2.1.0. Copyright (C) 2012-2026
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License ([GPL]) as published by the Free
