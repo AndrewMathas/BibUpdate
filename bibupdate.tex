@@ -190,11 +190,9 @@ does not change your original file. Instead, it writes the updated
 entries to a new file, with the filename given by adding an
 \texttt{updated\_} prefix, so \emph{file.bib} becomes
 \emph{updated\_file.bib}. To update the bib file in place, use
-\texttt{-\/-overwrite}, or give a output filename. Existing output files
-are backed up with \texttt{.bak} extensions, but \texttt{-\/-overwrite}
-should still be used with care.
-
-This should be used with care because you can potentially lose data.
+\texttt{-\/-overwrite}, or give an output filename. Existing output
+files are backed up with \texttt{.bak} extensions, but
+\texttt{-\/-overwrite} should still be used with care.
 
 \textbf{Options by task}:
 
@@ -247,20 +245,14 @@ This should be used with care because you can potentially lose data.
 \end{Verbatim}
 
 \Needspace{4\baselineskip}
-\textbf{Reports and logging}
-
-\begin{Verbatim}[breaklines=true,fontsize=\small]
--q, --quiet           brief updates and missed lookups
--qq                   only print errors
--l LOG, --log LOG     log messages to specified file (defaults to stdout)
-\end{Verbatim}
-
-\Needspace{4\baselineskip}
-\textbf{Help and version}
+\textbf{Help and logging}
 
 \begin{Verbatim}[breaklines=true,fontsize=\small]
 -h, --help            show grouped options and exit
 -H, --Help            print full program description
+-l LOG, --log LOG     log messages to specified file (defaults to stdout)
+-q, --quiet           brief updates and missed lookups
+-qq                   only print errors
 \end{Verbatim}
 
 \textbf{Note:} As described below, you should check the updated
@@ -748,21 +740,21 @@ with a tab before continuation lines.
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Reports and logging}\label{reports-and-logging}
+\subsubsection*{Help and logging}\label{help-and-logging}
 
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-q,\ -\/-quiet}}{-q, -\/-quiet}}\label{-q---quiet}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-h,\ -\/-help}}{-h, -\/-help}}\label{-h---help}
 
 \begin{BibUpdateOptionDescription}
 
-Print fewer messages
+Print a short list of command-line options
 
-By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
-prints a compact reference for each paper that is updated, and a warning
-for each paper for which the AMS lookup fails. With \texttt{-q} (or
-\texttt{-\/-quiet}) only a one-line message is printed for updated
-papers, together with the warnings for failed lookups. With \texttt{-qq}
-only errors are printed. Failed lookups are printed in red when the
-output is a terminal.
+\end{BibUpdateOptionDescription}
+
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-H,\ -\/-Help}}{-H, -\/-Help}}\label{-h---help-1}
+
+\begin{BibUpdateOptionDescription}
+
+Print the full-help message
 
 \end{BibUpdateOptionDescription}
 
@@ -778,21 +770,19 @@ errors are always printed to standard error.
 
 \end{BibUpdateOptionDescription}
 
-\subsubsection*{Help and version}\label{help-and-version}
-
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-h,\ -\/-help}}{-h, -\/-help}}\label{-h---help}
+\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-q,\ -\/-quiet}}{-q, -\/-quiet}}\label{-q---quiet}
 
 \begin{BibUpdateOptionDescription}
 
-Print a short list of command-line options
+Print fewer messages
 
-\end{BibUpdateOptionDescription}
-
-\BibUpdateOptionHeading*{\texorpdfstring{\texttt{-H,\ -\/-Help}}{-H, -\/-Help}}\label{-h---help-1}
-
-\begin{BibUpdateOptionDescription}
-
-Print the full-help message
+By default, \href{https://github.com/AndrewMathas/BibUpdate}{bibupdate}
+prints a compact reference for each paper that is updated, and a warning
+for each paper for which the AMS lookup fails. With \texttt{-q} (or
+\texttt{-\/-quiet}) only a one-line message is printed for updated
+papers, together with the warnings for failed lookups. With \texttt{-qq}
+only errors are printed. Failed lookups are printed in red when the
+output is a terminal.
 
 \end{BibUpdateOptionDescription}
 

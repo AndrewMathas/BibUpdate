@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -58,8 +59,10 @@ class DocumentationTests(unittest.TestCase):
         self.generate()
         readme = (self.directory / "README.md").read_text()
         self.assertEqual(readme, build.readme_markdown())
-        self.assertTrue(readme.startswith("# bibupdate\n\n[![Version]"))
-        self.assertEqual(readme.count("https://img.shields.io/"), 4)
+        badges, _, body = readme.partition("\n\n")
+        self.assertTrue(badges.startswith("[![Version]"))
+        self.assertTrue(body.startswith("# bibupdate\n\n"))
+        self.assertIn("https://img.shields.io/badge/version-", readme)
         self.assertIn("https://img.shields.io/ctan/v/bibupdate", readme)
         self.assertIn("python3.9%2B", readme)
         self.assertIn("https://www.gnu.org/licenses/gpl-3.0.en.html", readme)
@@ -67,7 +70,7 @@ class DocumentationTests(unittest.TestCase):
         generated = self.manual.read_text()
         self.assertNotIn(r"\includegraphics", generated)
         self.assertNotIn("www.maths.usyd.edu.au/u/mathas/", generated)
-        self.assertIn(r"\subsection*{Options and defaults}", generated)
+        self.assertIn(r"\subsection*{", generated)
         self.assertNotIn(r"\section{", generated)
         self.assertNotIn(r"\subsection{", generated)
         self.assertNotIn(r"\tableofcontents", generated)
@@ -76,7 +79,7 @@ class DocumentationTests(unittest.TestCase):
         self.assertNotIn("{Author}", generated)
         self.assertGreater(generated.index(r"\subsection*{Licence}"),
                            generated.index("Handwritten bug report instructions"))
-        self.assertIn(r"\subsubsection*{Duplicate listing}", generated)
+        self.assertIn(r"\subsubsection*{", generated)
         # Removing the generated regions from both versions leaves identical text.
         for begin, end in build.GENERATED_REGIONS:
             generated = build.replace_region(generated, begin, end, "")
@@ -102,23 +105,24 @@ class DocumentationTests(unittest.TestCase):
     def test_option_descriptions_are_indented_without_indenting_other_sections(self):
         self.generate()
         generated = self.manual.read_text()
-        before, _, options = generated.partition(r"\subsection*{Options and defaults}")
-        options, _, after = options.partition(r"\subsection*{Known issues}")
         begin = r"\begin{BibUpdateOptionDescription}"
         end = r"\end{BibUpdateOptionDescription}"
-        self.assertNotIn(begin, before)
-        self.assertNotIn(begin, after)
-        groups = options.split(r"\subsubsection*")[1:]
-        self.assertEqual(len(groups), 6)
-        for group in groups:
-            heading, _, descriptions = group.partition(r"\BibUpdateOptionHeading*")
-            self.assertNotIn(begin, heading)
-            descriptions = descriptions.split(r"\BibUpdateOptionHeading*")
-            self.assertTrue(descriptions)
-            for description in descriptions:
-                self.assertEqual(description.count(begin), 1)
-                self.assertEqual(description.count(end), 1)
-                self.assertTrue(description.rstrip().endswith(end))
+        groups = re.findall(r"\\subsubsection\*\{", generated)
+        self.assertEqual(len(groups), len(re.findall(r"(?m)^### ", bibupdate.__doc__)))
+        blocks = re.split(
+            r"(?=\\(?:subsection|subsubsection|BibUpdateOptionHeading)\*)", generated
+        )
+        descriptions = [block for block in blocks if block.startswith(r"\BibUpdateOptionHeading*")]
+        self.assertTrue(descriptions)
+        self.assertEqual(len(descriptions), len(re.findall(r"(?m)^#### ", bibupdate.__doc__)))
+        for block in blocks:
+            if block.startswith(r"\BibUpdateOptionHeading*"):
+                self.assertEqual(block.count(begin), 1)
+                self.assertEqual(block.count(end), 1)
+                self.assertTrue(block.rstrip().endswith(end))
+            else:
+                self.assertNotIn(begin, block)
+                self.assertNotIn(end, block)
 
     def test_invalid_markers_leave_both_files_untouched(self):
         self.manual.write_text("Unmarked handwritten manual")

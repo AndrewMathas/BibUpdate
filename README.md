@@ -1,8 +1,10 @@
-# bibupdate
-
 [![Version](https://img.shields.io/badge/version-2.1.0-success)](https://github.com/AndrewMathas/BibUpdate)
-[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
+[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)
+[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
 [![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
+![GitHub Release Date](https://img.shields.io/github/release-date/AndrewMathas/bibupdate?label=released&color=red)
+
+# bibupdate
 
 Automatically update bibtex files
 
@@ -31,12 +33,9 @@ optionally, updating citations to renamed duplicate keys in [LaTeX] files.
 By default, [bibupdate] does not change your original file. Instead, it
 writes the updated entries to a new file, with the filename given by 
 adding an `updated_` prefix, so *file.bib* becomes *updated_file.bib*.
-To update the bib file in place, use `--overwrite`, or give a output
+To update the bib file in place, use `--overwrite`, or give an output
 filename. Existing output files are backed up with `.bak` extensions,
 but `--overwrite` should still be used with care.
-
-This should be used with care because you
-can potentially lose data.
 
 **Options by task**:
 
@@ -76,16 +75,13 @@ can potentially lose data.
     -w LEN, --wrap LEN    wrap bibtex fields to specified width
     --threads N           number of concurrent AMS lookups (default: 1)
 
-**Reports and logging**
-
-    -q, --quiet           brief updates and missed lookups
-    -qq                   only print errors
-    -l LOG, --log LOG     log messages to specified file (defaults to stdout)
-
-**Help and version**
+**Help and logging**
 
     -h, --help            show grouped options and exit
     -H, --Help            print full program description
+    -l LOG, --log LOG     log messages to specified file (defaults to stdout)
+    -q, --quiet           brief updates and missed lookups
+    -qq                   only print errors
 
 **Note:**
 As described below, you should check the updated `.bib` file for errors
@@ -387,7 +383,23 @@ By default, lines are not wrapped (a wrap length of `0`). A positive
 wrap length `LEN` wraps each field value to that width, with a tab before
 continuation lines.
 
-### Reports and logging
+### Help and logging
+
+#### `-h, --help`
+
+Print a short list of command-line options
+
+#### `-H, --Help`
+
+Print the full-help message
+
+#### `-l LOG, --log LOG`
+
+Log output to file (defaults to stdout)
+
+By default, reports and warnings go to standard output. Use `-l` to write
+them to a file. Existing log files are overwritten. Fatal errors are always
+printed to standard error.
 
 #### `-q, --quiet`
 
@@ -398,24 +410,6 @@ is updated, and a warning for each paper for which the AMS lookup fails.
 With `-q` (or `--quiet`) only a one-line message is printed for updated
 papers, together with the warnings for failed lookups. With `-qq` only errors
 are printed. Failed lookups are printed in red when the output is a terminal.
-
-#### `-l LOG, --log LOG`
-
-Log output to file (defaults to stdout)
-
-By default, reports and warnings go to standard output. Use `-l` to write
-them to a file. Existing log files are overwritten. Fatal errors are always
-printed to standard error.
-
-### Help and version
-
-#### `-h, --help`
-
-Print a short list of command-line options
-
-#### `-H, --Help`
-
-Print the full-help message
 
 ## Known issues
 

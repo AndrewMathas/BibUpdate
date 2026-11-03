@@ -82,9 +82,10 @@ def readme_markdown():
     version = quote(bibupdate.bibup.version.replace("-", "--"), safe="")
     badges = (
         "[![Version](https://img.shields.io/badge/version-%s-success)](%s)\n"
-        "[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)"
+        "[![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)\n"
         "[![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%%2B-important)](https://www.python.org/)\n"
-        "[![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)"
+        "[![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)\n"
+        "![GitHub Release Date](https://img.shields.io/github/release-date/AndrewMathas/bibupdate?label=released&color=red)"
     ) % (version, bibupdate.bibup.url)
     testing = """## Tests
 
@@ -204,7 +205,7 @@ checks. Both commands prepare files locally; upload separately using
 `ctanupload -F bibupdate.ctan` from the source directory.
 
 """
-    readme = bibupdate.__doc__.replace("\n\n", "\n\n" + badges + "\n\n", 1)
+    readme = badges + "\n\n" + bibupdate.__doc__
     return readme.replace("## Licence\n", testing + "## Licence\n", 1)
 
 
