@@ -1,7 +1,7 @@
-include *.py
-include *.ini
-include *.md
-include bibupdate.tex
-include bibupdate.pdf
-include LICENSE.txt
-
+# Files for setuptools source distributions.
+# CTAN archives use CTAN_FILES in setup.py instead.
+include bibupdate.py bibupdate.ini
+include README.md CHANGES.md LICENSE.txt
+include bibupdate.tex bibupdate.pdf
+include setup.py make_release
+recursive-include tests *.py

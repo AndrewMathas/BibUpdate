@@ -1,7 +1,7 @@
 [![Version](https://img.shields.io/badge/version-2.1.0-success)](https://github.com/AndrewMathas/BibUpdate)
+[![LaTeX](https://img.shields.io/badge/LaTeX-008080?logo=latex&logoColor=fff&style=flat)](https://latex-project.org/)
 [![CTAN](https://img.shields.io/ctan/v/bibupdate?color=blue)](https://ctan.org/pkg/bibupdate)
 [![Requires Python 3.9+](https://img.shields.io/badge/requires-python3.9%2B-important)](https://www.python.org/)
-[![GPLv3](https://img.shields.io/badge/license-GPLv3-blueviolet.svg)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 ![GitHub Release Date](https://img.shields.io/github/release-date/AndrewMathas/bibupdate?label=released&color=red)
 
 # bibupdate
@@ -467,7 +467,7 @@ The files in `tests/` contain automated checks to catch bugs after changes:
   metadata generation.
 - [test_settings.py](tests/test_settings.py): metadata discovery through symlinks
   and standalone operation without an ini file.
-- [test_release.py](tests/test_release.py): release readiness checks and failure
+- [test_release.py](tests/test_release.py): prerelease checks and failure
   handling before packaging.
 
 Run all tests from the project directory using `./make_release -t` or:
@@ -526,7 +526,7 @@ options:
   -t, --tests       run the test suite
 ```
 
-The `make_release` script is just a wrapped to using `setup.py`, so it
+The `make_release` script is just a wrapper to using `setup.py`, so it
 is functonally equivalent to running commands like:
 
 ```bash
@@ -536,33 +536,33 @@ python3 setup.py release
 
 Use `pythn3 setup.py -h` to see the available commands.
 
-The `./make_release` script checks metadata consistency, the changelog, a clean
-Git working tree (including untracked files), generated documentation, PDF
-freshness and metadata, the [LaTeX] log, and all tests before creating 
-`bibupdate.tar.gz` and `bibupdate.ctan`. Checks use Pandoc and `pdfinfo`;
-rebuilding the manual also needs latexmk and TeX. The release check does not
-change metadata or rebuild files automatically. Any existing `bibupdate.tar.gz`
-is removed before readiness checks begin, including with `--check-only`.
-Terminal reports use green
-ticks for passing checks and test summaries, red crosses and text for failures,
-and yellow notices for skipped tests or overrides. Redirected output contains
-no colour escape sequences.
+The `./make_release` script checks metadata consistency, the changelog,
+uncommited changes in the Git repository (including untracked files),
+that the documentation is up to date and compiles, and that all unit 
+tests pass, in which case it creates `bibupdate.tar.gz` for uploading to
+CTAN. The script does not change metadata or rebuild files automatically.
+Any existing `bibupdate.tar.gz` is removed before it runs any tests,
+included when used with `--check-only`. Terminal reports use green
+ticks for passing tests, red crosses for failures, and yellow warning
+notices for skipped tests or overrides. Redirected output does not contain
+colour escape sequences.
 
-Use `./make_release -m` (or `--manual`) to rebuild the README and manual only,
-`./make_release -t` (or `--tests`) to run the tests only, or `./make_release -mt`
-to do both. Manual builds always recompile `bibupdate.tex`, even if latexmk
-considers the PDF current. These actions do not run readiness checks or create
+Use `./make_release -m` (or `--manual`) to rebuild the README file and
+LaTeX manual, `./make_release -t` to run the test suit. Manual builds always
+recompile `bibupdate.tex`. These actions do not run readiness checks or create
 an archive, so they also work while preparing an uncommitted release. They cannot
 be combined with the release-only flags below. The same options are available
 with `python3 setup.py release`.
 
-Use `-c` or `--check-only` to inspect readiness without creating an archive, `-s` or
-`--skip-tests` to omit the test suite, and `-f` or `--force` to building
-the tar file. Missing or changed package files still prevent the tar
-file from being created. The option `--check-only` returns a nonzero exit
-status when any check fails, including with `--force`.
+Use `-c` or `--check-only` to see if the package is potetially ready for
+release without building the tar file, `-s` or `--skip-tests` to omit the test
+suite, and `-f` or `--force` to building the tar file. Missing or changed
+package files prevent the tar file from being created. The option `--check-only`
+returns a nonzero exit status whenever a check fails, including when used
+with `--force`.
 
-`python3 setup.py ctan` packages the existing release files without readiness
+Running `python3 setup.py ctan` packages the existing release files without
+running the prerelease checks readiness
 checks. Both commands prepare files locally; upload separately using
 `ctanupload -F bibupdate.ctan` from the source directory.
 
